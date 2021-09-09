@@ -5,6 +5,6 @@ git pull
 echo "ADDING NEW FILES"
 git add .
 echo "COMMITING"
-git commit -m "$1"
-"PUSHING"
+git commit -m "$@"
+echo "PUSHING"
 git push
