@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -142,9 +143,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   "Přihlásit se",
                   style: TextStyle(color: Colors.white),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (_mailcontroller.text.length == 0 ||
                       _mailcontroller.text.length == 0) return;
+                  var connectivityResult =
+                      await (Connectivity().checkConnectivity());
+                  if (connectivityResult == ConnectivityResult.none) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            "Nastala chyba při kontaktování serveru, zkontrolujte připojení"),
+                      ),
+                    );
+                  }
                   http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
                       body: {
                         'email': _mailcontroller.text,
@@ -263,34 +275,7 @@ class MHDMain extends StatefulWidget {
 }
 
 class _MHDMainState extends State<MHDMain> {
-  var content = <TableRow>[
-    TableRow(children: [
-      TableCell(
-          child: Text("Název produktu",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ))),
-      TableCell(
-          child: Text("Platnost od",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ))),
-      TableCell(
-          child: Text("Platnost do",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ))),
-      TableCell(
-          child: Text("Cena",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              )))
-    ])
-  ];
+  var content = <Widget>[];
   var title = "Jízdenky";
   @override
   void initState() {
@@ -316,30 +301,54 @@ class _MHDMainState extends State<MHDMain> {
 
   @override
   Widget build(BuildContext context) {
+    final drawerItems = ListView(
+      children: [
+        DrawerHeader(child: Text("BRNOiD - MHD")),
+        ListTile(
+          selected: true,
+          title: Text(
+            "Jízdenky",
+          ),
+          onTap: () {/* TODO */},
+          leading: Icon(Icons.list),
+        ),
+        ListTile(
+            title: Text("Zakoupit předplatní jízdenku"),
+            onTap: () {/* TODO */},
+            leading: Icon(Icons.directions_bus)),
+        ListTile(
+            title: Text("Kontroly revizorem"),
+            onTap: () {/* TODO */},
+            leading: Icon(Icons.assignment_ind)),
+        ListTile(
+          title: Text("Mé nosiče"),
+          onTap: () {/* TODO */},
+          leading: Icon(Icons.credit_card),
+        )
+      ],
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text("MHD"),
       ),
       body: Container(
-        width: double.infinity,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          DefaultTextStyle(
+          width: double.infinity,
+          child: DefaultTextStyle(
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, color: Colors.black),
-              child: Padding(
-                child: Table(
-                  children: content,
-                ),
-                padding: EdgeInsets.only(top: 10.0),
-              ))
-        ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: content,
+              ))),
+      drawer: Drawer(
+        child: drawerItems,
       ),
     );
   }
 }
 
-Future<List<TableRow>> vemListky(context, cookie) async {
-  var content = <TableRow>[];
+Future<List<Widget>> vemListky(context, cookie) async {
+  var content = <Widget>[];
   var res = await http.get(Uri.parse("https://www.brnoid.cz/cs/moje-jizdenky"),
       headers: {HttpHeaders.cookieHeader: cookie}).catchError((err) {
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -352,16 +361,16 @@ Future<List<TableRow>> vemListky(context, cookie) async {
   if (res.statusCode >= 400) {
     // CHYBA
     print("chyba");
-    return <TableRow>[];
+    return <Widget>[];
   }
   var jizdenkyTable =
       RegExp(r"<tr>.+?(?=\/tr)", dotAll: true).allMatches(res.body);
   if (jizdenkyTable.length == 1) {
     //TODO: žádné jízdenky ?
+    content = [Text("Nemáte žádné platné jizdenky")];
   }
   for (var jizdenka in jizdenkyTable.skip(1)) {
     var r = jizdenka.group(0).toString();
-    print(r);
 
     var najitJmeno = RegExp(r"(?=<strong>).+?(?=<\/strong)", dotAll: true)
         .allMatches(r)
@@ -370,11 +379,12 @@ Future<List<TableRow>> vemListky(context, cookie) async {
     var nosic = najitJmeno[1].group(0).toString().replaceAll("<strong>", "");
 
 // TODO: filtrovat neplatne jizdenky
-    /*var platnost = RegExp(r'(?=<div class="label).+?(?=<\/div)')
+    var platnost = RegExp(r'(?=<div class="label).+?(?=<\/div)')
         .firstMatch(r)!
         .group(0)
         .toString()
-        .replaceAll(RegExp(r'<div class="label .+">'), "");*/
+        .replaceAll(RegExp(r'<div class="label .+">'), "");
+    if (platnost == "Neaktivn&iacute;") continue;
 
     var platiOdDo =
         RegExp(r'(?=<span).+?(?=<\/span)', dotAll: true).allMatches(r).toList();
@@ -389,12 +399,46 @@ Future<List<TableRow>> vemListky(context, cookie) async {
     var cena =
         RegExp(r"[0-9,]+ Kč(?=<\/div)").firstMatch(r)!.group(0).toString();
 
-    content.add(TableRow(children: [
-      TableCell(child: Text(jmeno)),
-      TableCell(child: Text(platiOd)),
-      TableCell(child: Text("$platiDo")),
-      TableCell(child: Text(cena))
-    ]));
+    content.add(Padding(
+      padding: EdgeInsets.only(top: 15.0, right: 5, left: 5),
+      child: Container(
+          width: double.infinity,
+          child: DefaultTextStyle(
+            child: Column(
+              children: [
+                Text("Jízdenka $jmeno"),
+                Row(
+                  children: [
+                    Text("Platí od: "),
+                    Text(
+                      platiOd,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text("Platí do: "),
+                    Text(
+                      platiDo,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text("Cena: "),
+                    Text(
+                      cena,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  ],
+                )
+              ],
+            ),
+            style: TextStyle(fontSize: 18.0, color: Colors.black),
+          )),
+    ));
   }
   return content;
 }

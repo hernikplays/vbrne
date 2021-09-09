@@ -2,7 +2,7 @@
     package="cz.hernikplays.vbrne">
    <application
         android:label="vbrne"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
         android:allowBackup="false"
         android:fullBackupContent="false">
         <activity
