@@ -148,6 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       _mailcontroller.text.length == 0) return;
                   var connectivityResult =
                       await (Connectivity().checkConnectivity());
+                  print(connectivityResult);
                   if (connectivityResult == ConnectivityResult.none) {
                     ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +157,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             "Nastala chyba při kontaktování serveru, zkontrolujte připojení"),
                       ),
                     );
+                    return;
                   }
                   http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
                       body: {
@@ -301,32 +303,6 @@ class _MHDMainState extends State<MHDMain> {
 
   @override
   Widget build(BuildContext context) {
-    final drawerItems = ListView(
-      children: [
-        DrawerHeader(child: Text("BRNOiD - MHD")),
-        ListTile(
-          selected: true,
-          title: Text(
-            "Jízdenky",
-          ),
-          onTap: () {/* TODO */},
-          leading: Icon(Icons.list),
-        ),
-        ListTile(
-            title: Text("Zakoupit předplatní jízdenku"),
-            onTap: () {/* TODO */},
-            leading: Icon(Icons.directions_bus)),
-        ListTile(
-            title: Text("Kontroly revizorem"),
-            onTap: () {/* TODO */},
-            leading: Icon(Icons.assignment_ind)),
-        ListTile(
-          title: Text("Mé nosiče"),
-          onTap: () {/* TODO */},
-          leading: Icon(Icons.credit_card),
-        )
-      ],
-    );
     return Scaffold(
       appBar: AppBar(
         title: Text("MHD"),
@@ -341,7 +317,39 @@ class _MHDMainState extends State<MHDMain> {
                 children: content,
               ))),
       drawer: Drawer(
-        child: drawerItems,
+        child: ListView(
+          children: [
+            DrawerHeader(child: Text("BRNOiD - MHD")),
+            ListTile(
+              selected: true,
+              title: Text(
+                "Jízdenky",
+              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
+              leading: Icon(Icons.list),
+            ),
+            ListTile(
+                title: Text("Zakoupit předplatní jízdenku"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.directions_bus)),
+            ListTile(
+                title: Text("Kontroly revizorem"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.assignment_ind)),
+            ListTile(
+              title: Text("Mé nosiče"),
+              onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.credit_card),
+            )
+          ],
+        ),
       ),
     );
   }
@@ -441,4 +449,79 @@ Future<List<Widget>> vemListky(context, cookie) async {
     ));
   }
   return content;
+}
+
+class NosicePage extends StatefulWidget {
+  NosicePage({Key? key, required this.cookie}) : super(key: key);
+
+  final String cookie;
+
+  @override
+  _NosicePage createState() => _NosicePage();
+}
+
+class _NosicePage extends State<NosicePage> {
+  final content = <Widget>[];
+
+  @override
+  void initState() {
+    super.initState();
+    Communicator.validateCookie(widget.cookie).then((valid) {
+      if (!valid)
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
+      var res = http.get(Uri.parse(""));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Mé nosiče"),
+      ),
+      body: Container(
+        width: double.infinity,
+        child: Column(
+            children: content, crossAxisAlignment: CrossAxisAlignment.center),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            DrawerHeader(child: Text("BRNOiD - MHD")),
+            ListTile(
+              title: Text(
+                "Jízdenky",
+              ),
+              onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.list),
+            ),
+            ListTile(
+                title: Text("Zakoupit předplatní jízdenku"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.directions_bus)),
+            ListTile(
+                title: Text("Kontroly revizorem"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.assignment_ind)),
+            ListTile(
+              title: Text("Mé nosiče"),
+              selected: true,
+              onTap: () {
+                Navigator.pop(context);
+              },
+              leading: Icon(Icons.credit_card),
+            )
+          ],
+        ),
+      ),
+    );
+  }
 }
