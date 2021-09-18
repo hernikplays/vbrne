@@ -307,15 +307,19 @@ class _MHDMainState extends State<MHDMain> {
       appBar: AppBar(
         title: Text("MHD"),
       ),
-      body: Container(
+      body: SingleChildScrollView(
+        child: Container(
           width: double.infinity,
           child: DefaultTextStyle(
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, color: Colors.black),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: content,
-              ))),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, color: Colors.black),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: content,
+            ),
+          ),
+        ),
+      ),
       drawer: Drawer(
         child: ListView(
           children: [
@@ -482,10 +486,12 @@ class _NosicePage extends State<NosicePage> {
       appBar: AppBar(
         title: Text("Mé nosiče"),
       ),
-      body: Container(
-        width: double.infinity,
-        child: Column(
-            children: content, crossAxisAlignment: CrossAxisAlignment.center),
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          child: Column(
+              children: content, crossAxisAlignment: CrossAxisAlignment.center),
+        ),
       ),
       drawer: Drawer(
         child: ListView(
