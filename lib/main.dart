@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -336,7 +337,13 @@ class _MHDMainState extends State<MHDMain> {
             ),
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
-                onTap: () {/* TODO */},
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (ctx) =>
+                              ZakoupitJizdenku(cookie: widget.cookie)));
+                },
                 leading: Icon(Icons.directions_bus)),
             ListTile(
                 title: Text("Kontroly revizorem"),
@@ -360,6 +367,7 @@ class _MHDMainState extends State<MHDMain> {
 }
 
 Future<List<Widget>> vemListky(context, cookie) async {
+  // TODO: převést do COmmunicator.dart a zmenit regexp s lookbacky
   var content = <Widget>[];
   var res = await http.get(Uri.parse("https://www.brnoid.cz/cs/moje-jizdenky"),
       headers: {HttpHeaders.cookieHeader: cookie}).catchError((err) {
@@ -476,7 +484,45 @@ class _NosicePage extends State<NosicePage> {
             context,
             MaterialPageRoute(
                 builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
-      var res = http.get(Uri.parse(""));
+
+      Communicator.ziskatNosice(widget.cookie).then((nosice) {
+        // TODO: Kontrolovat platnost
+        if (nosice.length == 0) {
+          content.add(Center(
+            child: Text("Nemáte žádné nosiče"),
+          ));
+        } else {
+          for (var nosic in nosice) {
+            content.add(Padding(
+              padding: EdgeInsets.only(top: 10, left: 10, right: 10),
+              child: Column(
+                children: [
+                  Text(nosic.nosicCislo),
+                  Row(
+                    children: [
+                      Text(
+                        "Platí do: ",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(nosic.platiDo)
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        "Číslo karty: ",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(nosic.cislo)
+                    ],
+                  )
+                ],
+              ),
+            ));
+          }
+          setState(() {});
+        }
+      });
     });
   }
 
@@ -489,8 +535,12 @@ class _NosicePage extends State<NosicePage> {
       body: SingleChildScrollView(
         child: Container(
           width: double.infinity,
-          child: Column(
-              children: content, crossAxisAlignment: CrossAxisAlignment.center),
+          child: DefaultTextStyle(
+            child: Column(
+                children: content,
+                crossAxisAlignment: CrossAxisAlignment.center),
+            style: TextStyle(fontSize: 18.0, color: Colors.black),
+          ),
         ),
       ),
       drawer: Drawer(
@@ -511,7 +561,13 @@ class _NosicePage extends State<NosicePage> {
             ),
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
-                onTap: () {/* TODO */},
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (ctx) =>
+                              ZakoupitJizdenku(cookie: widget.cookie)));
+                },
                 leading: Icon(Icons.directions_bus)),
             ListTile(
                 title: Text("Kontroly revizorem"),
@@ -522,6 +578,85 @@ class _NosicePage extends State<NosicePage> {
               selected: true,
               onTap: () {
                 Navigator.pop(context);
+              },
+              leading: Icon(Icons.credit_card),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ZakoupitJizdenku extends StatefulWidget {
+  ZakoupitJizdenku({Key? key, required this.cookie}) : super(key: key);
+
+  final String cookie;
+
+  @override
+  _ZakoupitJizdenkuState createState() => _ZakoupitJizdenkuState();
+}
+
+class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
+  @override
+  void initState() {
+    super.initState();
+    Communicator.validateCookie(widget.cookie).then((valid) {
+      if (!valid)
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Mé nosiče"),
+      ),
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          child: Column(
+              children: [], crossAxisAlignment: CrossAxisAlignment.center),
+        ),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            DrawerHeader(child: Text("BRNOiD - MHD")),
+            ListTile(
+              title: Text(
+                "Jízdenky",
+              ),
+              onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.list),
+            ),
+            ListTile(
+                title: Text("Zakoupit předplatní jízdenku"),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+                leading: Icon(Icons.directions_bus)),
+            ListTile(
+                title: Text("Kontroly revizorem"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.assignment_ind)),
+            ListTile(
+              title: Text("Mé nosiče"),
+              selected: true,
+              onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
               },
               leading: Icon(Icons.credit_card),
             )

@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
 
+/// Komunikátor s webem
 class Communicator {
   /// Ověří, zda cookie je platný a funguje
   static Future<bool> validateCookie(String cookie) async {
@@ -13,4 +16,58 @@ class Communicator {
     else
       return true;
   }
+
+  /// Získá nosiče z [Moje nosiče](https://www.brnoid.cz/cs/moje-nosice)
+  static Future<List<Nosic>> ziskatNosice(String cookie) async {
+    var nosice = <Nosic>[];
+
+    var res = await http.get(Uri.parse("https://www.brnoid.cz/cs/moje-nosice"),
+        headers: {HttpHeaders.cookieHeader: cookie}); // ziskame stranku
+    var vsechnyNosice =
+        RegExp(r'<tr>.+?(?=<\/tr>)', dotAll: true).allMatches(res.body).skip(1);
+    for (var nosic in vsechnyNosice) {
+      var s = nosic.group(0).toString();
+      var id = RegExp(r'(?<=for=").+?(?=")')
+          .firstMatch(s)!
+          .group(0)
+          .toString(); // ziska ID nosice
+
+      var panPlatnost = RegExp(r'(?<=italic">).+?(?=<)')
+          .allMatches(s)
+          .toList(); // ziska odhalenou cast cisla karty + zadanou platnost
+      var cislo = panPlatnost[0].group(0).toString();
+      var platiDo = panPlatnost[1].group(0).toString();
+
+      var nosicCislo = RegExp(r'(?<=">).+?(?=<\/label)')
+          .firstMatch(s)!
+          .group(0)
+          .toString(); // Nosič č. X
+
+      var n =
+          Nosic(id: id, platiDo: platiDo, cislo: cislo, nosicCislo: nosicCislo);
+      nosice.add(n);
+    }
+    return nosice;
+  }
+}
+
+/// Představuje nosič
+class Nosic {
+  /// Unikátní ID nosiče
+  final String id;
+
+  /// Platnost nosiče
+  final String platiDo;
+
+  /// Číslo karty
+  final String cislo;
+
+  /// Nosič č. X
+  final String nosicCislo;
+
+  Nosic(
+      {required this.id,
+      required this.platiDo,
+      required this.cislo,
+      required this.nosicCislo});
 }
