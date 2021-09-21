@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 /// Komunikátor s webem
@@ -48,6 +51,33 @@ class Communicator {
       nosice.add(n);
     }
     return nosice;
+  }
+
+  /// Přihlášení
+  static Future<String?> login(String user, String pass, bool remember) async {
+    if (user.length == 0 || pass.length == 0) return null;
+    var error = false;
+    var res = await http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
+        body: {
+          'email': user,
+          'password': pass,
+          'SubmitLogin': ""
+        }).catchError((error) {
+      error = true;
+    });
+    if (error) return null;
+    if (res.headers['location'] != "https://www.brnoid.cz/cs/muj-ucet") {
+      // v případě špatného hesla
+      return null;
+    }
+    var cookie = res.headers['set-cookie'];
+    if (remember) {
+      // save username and password
+      final storage = new FlutterSecureStorage();
+      await storage.write(key: 'vbrne_user', value: user);
+      await storage.write(key: 'vbrne_pass', value: pass);
+    }
+    return cookie;
   }
 }
 

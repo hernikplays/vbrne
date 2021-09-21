@@ -54,6 +54,54 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _passcontroller = TextEditingController();
   bool rememberChecked = false;
 
+  Future<Map<String, String>?> ziskejUdaje() async {
+    // zkontrolovat secure storage pokud je něco uložené
+    final storage = new FlutterSecureStorage();
+    var mail = await storage.read(key: "vbrne_user");
+    var pass = await storage.read(key: "vbrne_pass");
+    if (mail == null || pass == null) return null;
+    return {"mail": mail, "pass": pass};
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    ziskejUdaje().then((value) async {
+      if (value != null) {
+        // jsou uložené údaje
+
+        var connectivityResult = await (Connectivity().checkConnectivity());
+        print(connectivityResult);
+        if (connectivityResult == ConnectivityResult.none) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  "Nastala chyba při kontaktování serveru, zkontrolujte připojení"),
+            ),
+          );
+        }
+
+        var result = await Communicator.login(
+            value["mail"]!, value["pass"]!, rememberChecked);
+        if (result == null) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text("Nepodařilo se přihlásit, zkontrolujte e-mail a heslo."),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (ctx) => MainPage(title: "BRNOiD", cookie: result)));
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,120 +111,106 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Container(
         color: Color(0xffcb0e21),
         width: double.infinity,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.only(top: 20.0),
-              child: Text(
-                "V Brně",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 50.0),
-              ),
-            ),
-            Text(
-              "BRNOiD v Mobilu",
-              style: TextStyle(color: Colors.white, fontSize: 20.0),
-            ),
-            Padding(
-              padding: EdgeInsets.only(top: 20.0),
-              child: Container(
-                width: MediaQuery.of(context).size.width - 50,
-                child: TextField(
-                  controller: _mailcontroller,
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                      labelText: "E-Mail",
-                      labelStyle: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(top: 20.0),
-              child: Container(
-                width: MediaQuery.of(context).size.width - 50,
-                child: TextField(
-                  controller: _passcontroller,
-                  obscureText: true,
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                      labelText: "Heslo",
-                      labelStyle: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(top: 20.0),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: rememberChecked,
-                    onChanged: (value) {
-                      setState(() {
-                        rememberChecked = !rememberChecked;
-                      });
-                    },
-                  ),
-                  InkWell(
-                    child: Text(
-                      "Zapamatovat si",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        rememberChecked = !rememberChecked;
-                      });
-                    },
-                  )
-                ],
-                mainAxisAlignment: MainAxisAlignment.center,
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(top: 10.0),
-              child: TextButton(
+        height: double.infinity,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: 20.0),
                 child: Text(
-                  "Přihlásit se",
-                  style: TextStyle(color: Colors.white),
+                  "V Brně",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 50.0),
                 ),
-                onPressed: () async {
-                  if (_mailcontroller.text.length == 0 ||
-                      _mailcontroller.text.length == 0) return;
-                  var connectivityResult =
-                      await (Connectivity().checkConnectivity());
-                  print(connectivityResult);
-                  if (connectivityResult == ConnectivityResult.none) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            "Nastala chyba při kontaktování serveru, zkontrolujte připojení"),
+              ),
+              Text(
+                "BRNOiD v Mobilu",
+                style: TextStyle(color: Colors.white, fontSize: 20.0),
+              ),
+              Padding(
+                padding: EdgeInsets.only(top: 20.0),
+                child: Container(
+                  width: MediaQuery.of(context).size.width - 50,
+                  child: TextField(
+                    controller: _mailcontroller,
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                    decoration: InputDecoration(
+                        labelText: "E-Mail",
+                        labelStyle: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(top: 20.0),
+                child: Container(
+                  width: MediaQuery.of(context).size.width - 50,
+                  child: TextField(
+                    controller: _passcontroller,
+                    obscureText: true,
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                    decoration: InputDecoration(
+                        labelText: "Heslo",
+                        labelStyle: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(top: 20.0),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: rememberChecked,
+                      onChanged: (value) {
+                        setState(() {
+                          rememberChecked = !rememberChecked;
+                        });
+                      },
+                    ),
+                    InkWell(
+                      child: Text(
+                        "Zapamatovat si",
+                        style: TextStyle(color: Colors.white),
                       ),
-                    );
-                    return;
-                  }
-                  http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
-                      body: {
-                        'email': _mailcontroller.text,
-                        'password': _passcontroller.text,
-                        'SubmitLogin': ""
-                      }).catchError((error) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            "Nastala chyba při kontaktování serveru, zkontrolujte připojení"),
-                      ),
-                    );
-                  }).then((res) async {
-                    if (res.headers['location'] !=
-                        "https://www.brnoid.cz/cs/muj-ucet") {
-                      // v případě špatného hesla
+                      onTap: () {
+                        setState(() {
+                          rememberChecked = !rememberChecked;
+                        });
+                      },
+                    )
+                  ],
+                  mainAxisAlignment: MainAxisAlignment.center,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(top: 10.0),
+                child: TextButton(
+                  child: Text(
+                    "Přihlásit se",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onPressed: () async {
+                    var connectivityResult =
+                        await (Connectivity().checkConnectivity());
+                    print(connectivityResult);
+                    if (connectivityResult == ConnectivityResult.none) {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              "Nastala chyba při kontaktování serveru, zkontrolujte připojení"),
+                        ),
+                      );
+                    }
+
+                    var result = await Communicator.login(_mailcontroller.text,
+                        _passcontroller.text, rememberChecked);
+                    if (result == null) {
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -184,30 +218,19 @@ class _MyHomePageState extends State<MyHomePage> {
                               "Nepodařilo se přihlásit, zkontrolujte e-mail a heslo."),
                         ),
                       );
-                      return;
+                    } else {
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (ctx) =>
+                                  MainPage(title: "BRNOiD", cookie: result)));
                     }
-                    var cookie = res.headers['set-cookie'];
-                    if (rememberChecked) {
-                      // save username and password
-                      final storage = new FlutterSecureStorage();
-                      await storage.write(
-                          key: 'vbrne_user', value: _mailcontroller.text);
-                      await storage.write(
-                          key: 'vbrne_pass', value: _passcontroller.text);
-                    }
-                    Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (buildContext) => MainPage(
-                                  cookie: cookie!,
-                                  title: 'V Brně',
-                                )));
-                  });
-                },
+                  },
+                ),
               ),
-            ),
-          ],
-          crossAxisAlignment: CrossAxisAlignment.center,
+            ],
+            crossAxisAlignment: CrossAxisAlignment.center,
+          ),
         ),
       ),
     );
@@ -614,7 +637,7 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Mé nosiče"),
+        title: Text("Zakoupit předplatní jízdenku"),
       ),
       body: SingleChildScrollView(
         child: Container(
