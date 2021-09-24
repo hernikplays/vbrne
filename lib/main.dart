@@ -410,7 +410,7 @@ Future<List<Widget>> vemListky(context, cookie) async {
       RegExp(r"<tr>.+?(?=\/tr)", dotAll: true).allMatches(res.body);
   if (jizdenkyTable.length == 1) {
     //TODO: žádné jízdenky ?
-    content = [Text("Nemáte žádné platné jizdenky")];
+    content = [Center(child: Text("Nemáte žádné platné jizdenky"))];
   }
   for (var jizdenka in jizdenkyTable.skip(1)) {
     var r = jizdenka.group(0).toString();
@@ -621,6 +621,9 @@ class ZakoupitJizdenku extends StatefulWidget {
 }
 
 class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
+  var content = <Widget>[];
+  var vybranyNosic;
+
   @override
   void initState() {
     super.initState();
@@ -630,6 +633,32 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
             context,
             MaterialPageRoute(
                 builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
+    });
+
+    // získáme nosiče
+    Communicator.ziskatNosice(widget.cookie).then((nosice) {
+      if (nosice.length < 1) {
+        //TODO: uživatel nemá nosič
+      } else {
+        content = [
+          Padding(
+            padding: EdgeInsets.only(top: 10.0, bottom: 20.0),
+            child: Text("Vyberte nosič, na který chcete zakoupit jízdenku"),
+          ),
+          DropdownButton(
+            items: nosice.map<DropdownMenuItem<String>>((Nosic value) {
+              return DropdownMenuItem(
+                child: Text(value.nosicCislo), /*value: value.id*/
+              );
+            }).toList(),
+            value: vybranyNosic,
+            icon: Icon(Icons.credit_card),
+            onChanged: (newValue) {
+              print(newValue);
+            },
+          )
+        ];
+      }
     });
   }
 
@@ -643,7 +672,7 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
         child: Container(
           width: double.infinity,
           child: Column(
-              children: [], crossAxisAlignment: CrossAxisAlignment.center),
+              children: content, crossAxisAlignment: CrossAxisAlignment.center),
         ),
       ),
       drawer: Drawer(
