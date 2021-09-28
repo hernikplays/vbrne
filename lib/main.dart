@@ -640,24 +640,91 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
       if (nosice.length < 1) {
         //TODO: uživatel nemá nosič
       } else {
+        vybranyNosic = nosice[0].id;
         content = [
           Padding(
-            padding: EdgeInsets.only(top: 10.0, bottom: 20.0),
-            child: Text("Vyberte nosič, na který chcete zakoupit jízdenku"),
+            padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
+            child: Text(
+              "Vyberte nosič, na který chcete zakoupit jízdenku",
+              style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
           ),
           DropdownButton(
             items: nosice.map<DropdownMenuItem<String>>((Nosic value) {
               return DropdownMenuItem(
-                child: Text(value.nosicCislo), /*value: value.id*/
-              );
+                  child: Text(value.nosicCislo, style: TextStyle(fontSize: 20)),
+                  value: value.id);
             }).toList(),
             value: vybranyNosic,
             icon: Icon(Icons.credit_card),
             onChanged: (newValue) {
-              print(newValue);
+              setState(() {
+                vybranyNosic = newValue;
+              });
             },
-          )
+          ),
+          TextButton(
+              onPressed: () {
+                http
+                    .get(Uri.parse(
+                        "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${vybranyNosic.replace("token_", "")}&id_category=17#select-category"))
+                    .then((res) {
+                  var optionRegex = RegExp(r'(?<=">).+?(?=<\/option)')
+                      .allMatches(res.body)
+                      .skip(1);
+                  var valueRegex = RegExp(r'(?<=">).+?(?=<\/option)')
+                      .allMatches(res.body)
+                      .skip(1)
+                      .toList();
+                  var f = 0;
+                  content = [
+                    Padding(
+                      padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
+                      child: Text(
+                        "Vyberte kategorii jízdného",
+                        style: TextStyle(fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    DropdownButton(
+                      items: optionRegex
+                          .map<DropdownMenuItem<String>>((RegExpMatch moznost) {
+                        f += 1;
+                        return DropdownMenuItem(
+                            child: Text(moznost.group(0).toString(),
+                                style: TextStyle(fontSize: 20)),
+                            value: valueRegex[f - 1].group(0).toString());
+                      }).toList(),
+                      value: vybranyNosic,
+                      icon: Icon(Icons.credit_card),
+                      onChanged: (newValue) {
+                        setState(() {
+                          vybranyNosic = newValue;
+                        });
+                      },
+                    ),
+                    TextButton(
+                        onPressed: () {
+                          http
+                              .get(Uri.parse(
+                                  "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${vybranyNosic.replace("token_", "")}&id_category=17#select-category"))
+                              .then((res) {
+                            var optionRegex = RegExp(r'(?<=">).+?(?=<\/option)')
+                                .allMatches(res.body)
+                                .skip(1);
+                            var valueRegex = RegExp(r'(?<=">).+?(?=<\/option)')
+                                .allMatches(res.body)
+                                .skip(1);
+                          });
+                        },
+                        child: Text("Pokračovat"))
+                  ];
+                });
+              },
+              child: Text("Pokračovat"))
         ];
+        setState(() {});
       }
     });
   }
@@ -672,7 +739,9 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
         child: Container(
           width: double.infinity,
           child: Column(
-              children: content, crossAxisAlignment: CrossAxisAlignment.center),
+              children: content,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center),
         ),
       ),
       drawer: Drawer(
@@ -693,6 +762,7 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
             ),
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
+                selected: true,
                 onTap: () {
                   Navigator.pop(context);
                 },
@@ -703,7 +773,6 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
                 leading: Icon(Icons.assignment_ind)),
             ListTile(
               title: Text("Mé nosiče"),
-              selected: true,
               onTap: () {
                 Navigator.push(
                     context,
