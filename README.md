@@ -7,3 +7,5 @@
   Toto je **neoficiální** aplikace pro přihlášení do systému BRNOiD.
   
   Aplikace je aktuálně ve vývoji.
+
+[To-do kanban](https://tree.taiga.io/project/hernikplays-v-brne/kanban)
