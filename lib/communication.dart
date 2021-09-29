@@ -54,28 +54,24 @@ class Communicator {
   /// Přihlášení
   static Future<String?> login(String user, String pass, bool remember) async {
     if (user.length == 0 || pass.length == 0) return null;
-    var error = false;
-    var res = await http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
-        body: {
-          'email': user,
-          'password': pass,
-          'SubmitLogin': ""
-        }).catchError((error) {
-      error = true;
-    });
-    if (error) return null;
-    if (res.headers['location'] != "https://www.brnoid.cz/cs/muj-ucet") {
-      // v případě špatného hesla
+    try {
+      var res = await http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
+          body: {'email': user, 'password': pass, 'SubmitLogin': ""});
+      if (res.headers['location'] != "https://www.brnoid.cz/cs/muj-ucet") {
+        // v případě špatného hesla
+        return null;
+      }
+      var cookie = res.headers['set-cookie'];
+      if (remember) {
+        // save username and password
+        final storage = new FlutterSecureStorage();
+        await storage.write(key: 'vbrne_user', value: user);
+        await storage.write(key: 'vbrne_pass', value: pass);
+      }
+      return cookie;
+    } catch (e) {
       return null;
     }
-    var cookie = res.headers['set-cookie'];
-    if (remember) {
-      // save username and password
-      final storage = new FlutterSecureStorage();
-      await storage.write(key: 'vbrne_user', value: user);
-      await storage.write(key: 'vbrne_pass', value: pass);
-    }
-    return cookie;
   }
 }
 

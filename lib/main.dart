@@ -349,6 +349,14 @@ class _MHDMainState extends State<MHDMain> {
           children: [
             DrawerHeader(child: Text("BRNOiD - MHD")),
             ListTile(
+              title: Text("Domů"),
+              onTap: () {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (ctx) =>
+                        MainPage(title: 'Domů', cookie: widget.cookie)));
+              },
+            ),
+            ListTile(
               selected: true,
               title: Text(
                 "Jízdenky",
@@ -361,11 +369,11 @@ class _MHDMainState extends State<MHDMain> {
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
                 onTap: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                           builder: (ctx) =>
-                              ZakoupitJizdenku(cookie: widget.cookie)));
+                              NakupVyberNosic(cookie: widget.cookie)));
                 },
                 leading: Icon(Icons.directions_bus)),
             ListTile(
@@ -375,7 +383,7 @@ class _MHDMainState extends State<MHDMain> {
             ListTile(
               title: Text("Mé nosiče"),
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                         builder: (ctx) => NosicePage(cookie: widget.cookie)));
@@ -571,11 +579,19 @@ class _NosicePage extends State<NosicePage> {
           children: [
             DrawerHeader(child: Text("BRNOiD - MHD")),
             ListTile(
+              title: Text("Domů"),
+              onTap: () {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (ctx) =>
+                        MainPage(title: 'Domů', cookie: widget.cookie)));
+              },
+            ),
+            ListTile(
               title: Text(
                 "Jízdenky",
               ),
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                         builder: (ctx) => MHDMain(cookie: widget.cookie)));
@@ -585,11 +601,11 @@ class _NosicePage extends State<NosicePage> {
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
                 onTap: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                           builder: (ctx) =>
-                              ZakoupitJizdenku(cookie: widget.cookie)));
+                              NakupVyberNosic(cookie: widget.cookie)));
                 },
                 leading: Icon(Icons.directions_bus)),
             ListTile(
@@ -611,18 +627,30 @@ class _NosicePage extends State<NosicePage> {
   }
 }
 
-class ZakoupitJizdenku extends StatefulWidget {
-  ZakoupitJizdenku({Key? key, required this.cookie}) : super(key: key);
+class NakupVyberNosic extends StatefulWidget {
+  NakupVyberNosic({Key? key, required this.cookie}) : super(key: key);
 
   final String cookie;
 
   @override
-  _ZakoupitJizdenkuState createState() => _ZakoupitJizdenkuState();
+  _NakupVyberNosicState createState() => _NakupVyberNosicState();
 }
 
-class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
+class _NakupVyberNosicState extends State<NakupVyberNosic> {
   var content = <Widget>[];
-  var vybranyNosic;
+  var itemy = <Nosic>[]; // vsechny nosice uzivatele
+  var vybranyObjekt; // vybrany nosic
+
+  void ziskejNosice() {
+    Communicator.ziskatNosice(widget.cookie).then((nosice) {
+      if (nosice.length < 1) {
+        //TODO: uživatel nemá nosič
+      } else {
+        itemy = nosice;
+        setState(() {});
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -636,97 +664,7 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
     });
 
     // získáme nosiče
-    Communicator.ziskatNosice(widget.cookie).then((nosice) {
-      if (nosice.length < 1) {
-        //TODO: uživatel nemá nosič
-      } else {
-        vybranyNosic = nosice[0].id;
-        content = [
-          Padding(
-            padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
-            child: Text(
-              "Vyberte nosič, na který chcete zakoupit jízdenku",
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          DropdownButton(
-            items: nosice.map<DropdownMenuItem<String>>((Nosic value) {
-              return DropdownMenuItem(
-                  child: Text(value.nosicCislo, style: TextStyle(fontSize: 20)),
-                  value: value.id);
-            }).toList(),
-            value: vybranyNosic,
-            icon: Icon(Icons.credit_card),
-            onChanged: (newValue) {
-              setState(() {
-                vybranyNosic = newValue;
-              });
-            },
-          ),
-          TextButton(
-              onPressed: () {
-                http
-                    .get(Uri.parse(
-                        "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${vybranyNosic.replace("token_", "")}&id_category=17#select-category"))
-                    .then((res) {
-                  var optionRegex = RegExp(r'(?<=">).+?(?=<\/option)')
-                      .allMatches(res.body)
-                      .skip(1);
-                  var valueRegex = RegExp(r'(?<=">).+?(?=<\/option)')
-                      .allMatches(res.body)
-                      .skip(1)
-                      .toList();
-                  var f = 0;
-                  content = [
-                    Padding(
-                      padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
-                      child: Text(
-                        "Vyberte kategorii jízdného",
-                        style: TextStyle(fontSize: 18),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    DropdownButton(
-                      items: optionRegex
-                          .map<DropdownMenuItem<String>>((RegExpMatch moznost) {
-                        f += 1;
-                        return DropdownMenuItem(
-                            child: Text(moznost.group(0).toString(),
-                                style: TextStyle(fontSize: 20)),
-                            value: valueRegex[f - 1].group(0).toString());
-                      }).toList(),
-                      value: vybranyNosic,
-                      icon: Icon(Icons.credit_card),
-                      onChanged: (newValue) {
-                        setState(() {
-                          vybranyNosic = newValue;
-                        });
-                      },
-                    ),
-                    TextButton(
-                        onPressed: () {
-                          http
-                              .get(Uri.parse(
-                                  "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${vybranyNosic.replace("token_", "")}&id_category=17#select-category"))
-                              .then((res) {
-                            var optionRegex = RegExp(r'(?<=">).+?(?=<\/option)')
-                                .allMatches(res.body)
-                                .skip(1);
-                            var valueRegex = RegExp(r'(?<=">).+?(?=<\/option)')
-                                .allMatches(res.body)
-                                .skip(1);
-                          });
-                        },
-                        child: Text("Pokračovat"))
-                  ];
-                });
-              },
-              child: Text("Pokračovat"))
-        ];
-        setState(() {});
-      }
-    });
+    ziskejNosice();
   }
 
   @override
@@ -739,7 +677,40 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
         child: Container(
           width: double.infinity,
           child: Column(
-              children: content,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
+                  child: Text(
+                    "Vyberte nosič, na který chcete zakoupit jízdenku",
+                    style: TextStyle(fontSize: 18),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                DropdownButton<String>(
+                  items: (itemy.length == 0)
+                      ? null
+                      : itemy.map<DropdownMenuItem<String>>((Nosic value) {
+                          return DropdownMenuItem<String>(
+                              child: Text(value.nosicCislo,
+                                  style: TextStyle(fontSize: 20)),
+                              value: value.id);
+                        }).toList(),
+                  value: vybranyObjekt,
+                  icon: Icon(Icons.credit_card),
+                  onChanged: (newValue) {
+                    setState(() {
+                      vybranyObjekt = newValue!;
+                    });
+                  },
+                ),
+                TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (ctx) => NakupVybratKategorii(
+                              cookie: widget.cookie, nosicId: vybranyObjekt)));
+                    },
+                    child: Text("Pokračovat")),
+              ],
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center),
         ),
@@ -749,11 +720,19 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
           children: [
             DrawerHeader(child: Text("BRNOiD - MHD")),
             ListTile(
+              title: Text("Domů"),
+              onTap: () {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (ctx) =>
+                        MainPage(title: 'Domů', cookie: widget.cookie)));
+              },
+            ),
+            ListTile(
               title: Text(
                 "Jízdenky",
               ),
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                         builder: (ctx) => MHDMain(cookie: widget.cookie)));
@@ -774,7 +753,160 @@ class _ZakoupitJizdenkuState extends State<ZakoupitJizdenku> {
             ListTile(
               title: Text("Mé nosiče"),
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.credit_card),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class NakupVybratKategorii extends StatefulWidget {
+  // zde vybereme kategorii
+  NakupVybratKategorii({Key? key, required this.cookie, required this.nosicId})
+      : super(key: key);
+
+  final String cookie;
+  final String nosicId;
+
+  @override
+  _VybratKategoriiState createState() => _VybratKategoriiState();
+}
+
+class _VybratKategoriiState extends State<NakupVybratKategorii> {
+  var content = <Widget>[];
+  var itemy = <RegExpMatch>[]; // vsechny kategorie uzivatele
+  var itemyId; // id jednotlivych kategorii
+  var vybranyObjekt; // vybrana kategorie
+
+  @override
+  void initState() {
+    super.initState();
+    Communicator.validateCookie(widget.cookie).then((valid) {
+      if (!valid)
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
+    });
+
+    // získáme kategorie
+    ziskejKategorie();
+  }
+
+  void ziskejKategorie() {
+    http.get(
+        Uri.parse(
+            "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${widget.nosicId.replaceAll("token_", "")}&id_category=17#select-category"),
+        headers: {HttpHeaders.cookieHeader: widget.cookie}).then((res) {
+      var mozneSlevy = RegExp(r'(?<=<select).+?(?=<\/select)')
+          .firstMatch(res.body)!
+          .group(0)!
+          .toString();
+
+      itemy =
+          RegExp(r'(?<=" >).+?(?=<\/option)').allMatches(mozneSlevy).toList();
+
+      itemyId =
+          RegExp(r'(?<=value=")\d+?(?=")').allMatches(mozneSlevy).toList();
+      setState(() {});
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Zakoupit předplatní jízdenku"),
+      ),
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
+                  child: Text(
+                    "Vyberte kategorii jízdného",
+                    style: TextStyle(fontSize: 18),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                DropdownButton<String>(
+                  items: (itemy.length == 0)
+                      ? null
+                      : itemy
+                          .map<DropdownMenuItem<String>>((RegExpMatch value) {
+                          return DropdownMenuItem<String>(
+                              child: Text(value.group(0).toString(),
+                                  style: TextStyle(fontSize: 20)),
+                              value: itemyId[itemy.indexOf(value)]
+                                  .group(0)
+                                  .toString());
+                        }).toList(),
+                  value: vybranyObjekt,
+                  icon: Icon(Icons.person),
+                  onChanged: (newValue) {
+                    setState(() {
+                      vybranyObjekt = newValue!;
+                    });
+                  },
+                ),
+                TextButton(
+                    onPressed: () {
+                      // TODO: Pokračuj na nákup
+                    },
+                    child: Text("Pokračovat")),
+              ],
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center),
+        ),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            DrawerHeader(child: Text("BRNOiD - MHD")),
+            ListTile(
+              title: Text("Domů"),
+              onTap: () {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (ctx) =>
+                        MainPage(title: 'Domů', cookie: widget.cookie)));
+              },
+            ),
+            ListTile(
+              title: Text(
+                "Jízdenky",
+              ),
+              onTap: () {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.list),
+            ),
+            ListTile(
+                title: Text("Zakoupit předplatní jízdenku"),
+                selected: true,
+                onTap: () {
+                  Navigator.pop(context);
+                },
+                leading: Icon(Icons.directions_bus)),
+            ListTile(
+                title: Text("Kontroly revizorem"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.assignment_ind)),
+            ListTile(
+              title: Text("Mé nosiče"),
+              onTap: () {
+                Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                         builder: (ctx) => NosicePage(cookie: widget.cookie)));

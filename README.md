@@ -8,4 +8,10 @@
   
   Aplikace je aktuálně ve vývoji.
 
+## Implementované funkce
+- Nejvíc divný kód, který z nějakého důvodu funguje
+### MHD
+- zobrazení zakoupených jízdenek
+- zobrazení nosičů
+
 [To-do kanban](https://tree.taiga.io/project/hernikplays-v-brne/kanban)
