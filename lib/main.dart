@@ -697,6 +697,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
                         }).toList(),
                   value: vybranyObjekt,
                   icon: Icon(Icons.credit_card),
+                  isExpanded: true,
                   onChanged: (newValue) {
                     setState(() {
                       vybranyObjekt = newValue!;
@@ -705,6 +706,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
                 ),
                 TextButton(
                     onPressed: () {
+                      if (vybranyObjekt == null) return;
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (ctx) => NakupVybratKategorii(
                               cookie: widget.cookie, nosicId: vybranyObjekt)));
@@ -852,6 +854,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
                         }).toList(),
                   value: vybranyObjekt,
                   icon: Icon(Icons.person),
+                  isExpanded: true,
                   onChanged: (newValue) {
                     setState(() {
                       vybranyObjekt = newValue!;
@@ -860,6 +863,211 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
                 ),
                 TextButton(
                     onPressed: () {
+                      if (vybranyObjekt == null) return;
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                          builder: (ctx) => NakupVybratJizdenku(
+                              cookie: widget.cookie,
+                              nosicId: widget.nosicId,
+                              kategorie: vybranyObjekt)));
+                    },
+                    child: Text("Pokračovat")),
+              ],
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center),
+        ),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            DrawerHeader(child: Text("BRNOiD - MHD")),
+            ListTile(
+              title: Text("Domů"),
+              onTap: () {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (ctx) =>
+                        MainPage(title: 'Domů', cookie: widget.cookie)));
+              },
+            ),
+            ListTile(
+              title: Text(
+                "Jízdenky",
+              ),
+              onTap: () {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.list),
+            ),
+            ListTile(
+                title: Text("Zakoupit předplatní jízdenku"),
+                selected: true,
+                onTap: () {
+                  Navigator.pop(context);
+                },
+                leading: Icon(Icons.directions_bus)),
+            ListTile(
+                title: Text("Kontroly revizorem"),
+                onTap: () {/* TODO */},
+                leading: Icon(Icons.assignment_ind)),
+            ListTile(
+              title: Text("Mé nosiče"),
+              onTap: () {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+              },
+              leading: Icon(Icons.credit_card),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class NakupVybratJizdenku extends StatefulWidget {
+  // zde vybereme kategorii
+  NakupVybratJizdenku(
+      {Key? key,
+      required this.cookie,
+      required this.nosicId,
+      required this.kategorie})
+      : super(key: key);
+
+  final String cookie;
+  final String nosicId;
+  final String kategorie;
+
+  @override
+  _VybratJizdenkuState createState() => _VybratJizdenkuState();
+}
+
+class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
+  var content = <Widget>[];
+  var itemy = <
+      DropdownMenuItem<
+          String>>[]; // nazvy jednotlivych jizdenek kategorie uzivatele
+  var itemyId; // id jednotlivych jizdenek
+  var vybranyObjekt; // vybrana jizdenka
+  var vybiratZony = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Communicator.validateCookie(widget.cookie).then((valid) {
+      if (!valid)
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
+    });
+
+    // získáme kategorie
+    ziskejJizdenky();
+  }
+
+  void ziskejJizdenky() {
+    http.get(
+        Uri.parse(
+            "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${widget.nosicId.replaceAll("token_", "")}&id_category=17&id_subcategory=${widget.kategorie}#select-category"),
+        headers: {HttpHeaders.cookieHeader: widget.cookie}).then((res) {
+      var mozneJizdenky = RegExp(r'(?<=id="products").+?(?=<\/select)')
+          .firstMatch(res.body)!
+          .group(0)!
+          .toString();
+
+      var options =
+          RegExp(r'(?<=<optgroup).+?(?=">)|(?<=<option value).+?(?=<\/option)')
+              .allMatches(mozneJizdenky)
+              .skip(1)
+              .toList();
+      for (var k in options) {
+        var match = k.group(0).toString();
+        if (match.contains("label")) {
+          // match je <optgroup>
+          itemy.add(DropdownMenuItem<String>(
+            child: Text(
+              match.replaceAll("label=\"", ""),
+            ),
+            enabled: false,
+          ));
+        } else {
+          // jizdenka
+          var id = RegExp(r'(?<=")\d+?(?=")', dotAll: true)
+              .firstMatch(match)!
+              .group(0)
+              .toString();
+          var nazev = RegExp(r'(?<=>).+', dotAll: true)
+              .firstMatch(match)!
+              .group(0)
+              .toString();
+          itemy.add(DropdownMenuItem<String>(
+            child: Text(nazev, softWrap: true, overflow: TextOverflow.fade),
+            value: id,
+          ));
+        }
+      }
+      setState(() {});
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Zakoupit předplatní jízdenku"),
+      ),
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
+                  child: Text(
+                    "Vyberte jízdenku",
+                    style: TextStyle(fontSize: 18),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Container(
+                  child: DropdownButton<String>(
+                    items: (itemy.length == 0) ? null : itemy,
+                    value: vybranyObjekt,
+                    icon: Icon(Icons.confirmation_number_rounded),
+                    isExpanded: true,
+                    onChanged: (newValue) {
+                      setState(() {
+                        if (newValue!.contains(RegExp(r'\+\d zón'))) {
+                          vybiratZony = true;
+                        }
+                        vybranyObjekt = newValue;
+                      });
+                    },
+                  ),
+                  width: 300,
+                ),
+                Visibility(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(top: 20.0, bottom: 10.0),
+                        child: Text(
+                          "Vyberte zóny",
+                          style: TextStyle(fontSize: 18),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                  visible: vybiratZony,
+                ),
+                TextButton(
+                    onPressed: () {
+                      if (vybranyObjekt == null) return;
                       // TODO: Pokračuj na nákup
                     },
                     child: Text("Pokračovat")),
