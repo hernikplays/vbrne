@@ -105,9 +105,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Container(
         color: Color(0xffcb0e21),
         width: double.infinity,
@@ -255,6 +253,36 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: <Widget>[
+          PopupMenuButton<String>(
+            onSelected: (val) async {
+              switch (val) {
+                case "Odhlásit se":
+                  final storage = new FlutterSecureStorage();
+                  await storage.delete(key: "vbrne_user");
+                  await storage.delete(key: "vbrne_pass");
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (ctx) => MyHomePage(title: "Přihlásit se")));
+                  break;
+                case "Nastavení":
+                  // TODO: Nastavení
+                  break;
+                default:
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              return {'Odhlásit se', 'Nastavení'}.map((String choice) {
+                return PopupMenuItem<String>(
+                  value: choice,
+                  child: Text(choice),
+                );
+              }).toList();
+            },
+          ),
+        ],
       ),
       body: Container(
           width: double.infinity,
