@@ -451,7 +451,7 @@ Future<List<Widget>> vemListky(context, cookie) async {
                     children: [
                       Text("Platí od: "),
                       Text(
-                        listek.platiOd,
+                        listek.platiOd.toString(),
                         style: TextStyle(fontWeight: FontWeight.bold),
                       )
                     ],
@@ -460,7 +460,7 @@ Future<List<Widget>> vemListky(context, cookie) async {
                     children: [
                       Text("Platí do: "),
                       Text(
-                        listek.platiDo,
+                        listek.platiDo.toString(),
                         style: TextStyle(fontWeight: FontWeight.bold),
                       )
                     ],

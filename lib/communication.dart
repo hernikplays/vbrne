@@ -119,6 +119,8 @@ class Communicator {
       var platiDo =
           "${platiOdDo[2].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}, ${platiOdDo[3].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
 
+      platiDo = DateTime.parse(formattedString);
+
       nosic =
           "$nosic - ${platiOdDo[4].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
 
@@ -159,10 +161,10 @@ class Nosic {
 
 class Jizdenka {
   /// Začátek platnosti
-  final String platiOd; // TODO: Převést na DateTime
+  final DateTime platiOd; // TODO: Převést na DateTime
 
   /// Konec platnosti
-  final String platiDo; // TODO: Převést na DateTime
+  final DateTime platiDo; // TODO: Převést na DateTime
 
   /// Cena za jízdenku
   final String cena;
