@@ -14,4 +14,4 @@
 - zobrazení zakoupených jízdenek
 - zobrazení nosičů
 
-[To-do kanban](https://tree.taiga.io/project/hernikplays-v-brne/kanban)
+**[To-do kanban](https://tree.taiga.io/project/hernikplays-v-brne/kanban)**

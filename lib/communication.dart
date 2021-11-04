@@ -73,6 +73,67 @@ class Communicator {
       return null;
     }
   }
+
+  static Future<List<Jizdenka>?> ziskejJizdenky(String cookie) async {
+    var c = false;
+    var jizdenky = <Jizdenka>[];
+    var res = await http.get(
+        Uri.parse("https://www.brnoid.cz/cs/moje-jizdenky"),
+        headers: {HttpHeaders.cookieHeader: cookie}).catchError((err) {
+      print(err);
+      c = true;
+    });
+    if (res.statusCode >= 400 || c) {
+      // CHYBA
+      print("chyba");
+      return null;
+    }
+    var jizdenkyTable =
+        RegExp(r"<tr>.+?(?=\/tr)", dotAll: true).allMatches(res.body);
+    if (jizdenkyTable.length == 1) {
+      //TODO: žádné jízdenky ?
+      return [];
+    }
+    for (var jizdenka in jizdenkyTable.skip(1)) {
+      var r = jizdenka.group(0).toString();
+
+      var najitJmeno = RegExp(r"(?=<strong>).+?(?=<\/strong)", dotAll: true)
+          .allMatches(r)
+          .toList();
+      var jmeno = najitJmeno[0].group(0).toString().replaceAll("<strong>", "");
+      var nosic = najitJmeno[1].group(0).toString().replaceAll("<strong>", "");
+
+// TODO: filtrovat neplatne jizdenky
+      var platnost = RegExp(r'(?=<div class="label).+?(?=<\/div)')
+          .firstMatch(r)!
+          .group(0)
+          .toString()
+          .replaceAll(RegExp(r'<div class="label .+">'), "");
+      if (platnost == "Neaktivn&iacute;") continue;
+
+      var platiOdDo = RegExp(r'(?=<span).+?(?=<\/span)', dotAll: true)
+          .allMatches(r)
+          .toList();
+      var platiOd =
+          "${platiOdDo[0].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}, ${platiOdDo[1].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
+      var platiDo =
+          "${platiOdDo[2].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}, ${platiOdDo[3].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
+
+      nosic =
+          "$nosic - ${platiOdDo[4].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
+
+      var cena =
+          RegExp(r"[0-9,]+ Kč(?=<\/div)").firstMatch(r)!.group(0).toString();
+
+      jizdenky.add(Jizdenka(
+          cena: cena,
+          platiOd: platiOd,
+          platiDo: platiDo,
+          nosic: nosic,
+          nazev: jmeno));
+    }
+    return jizdenky;
+  }
 }
 
 /// Představuje nosič
@@ -94,4 +155,28 @@ class Nosic {
       required this.platiDo,
       required this.cislo,
       required this.nosicCislo});
+}
+
+class Jizdenka {
+  /// Začátek platnosti
+  final String platiOd; // TODO: Převést na DateTime
+
+  /// Konec platnosti
+  final String platiDo; // TODO: Převést na DateTime
+
+  /// Cena za jízdenku
+  final String cena;
+
+  /// Název jízdenky
+  final String nazev;
+
+  /// Identifikator nosiče, na kterém je jízdenka
+  final String nosic;
+
+  Jizdenka(
+      {required this.platiOd,
+      required this.platiDo,
+      required this.cena,
+      required this.nazev,
+      required this.nosic});
 }

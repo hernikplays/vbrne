@@ -428,96 +428,58 @@ class _MHDMainState extends State<MHDMain> {
 Future<List<Widget>> vemListky(context, cookie) async {
   // TODO: převést do COmmunicator.dart a zmenit regexp s lookbacky
   var content = <Widget>[];
-  var res = await http.get(Uri.parse("https://www.brnoid.cz/cs/moje-jizdenky"),
-      headers: {HttpHeaders.cookieHeader: cookie}).catchError((err) {
+  var listky = await Communicator.ziskejJizdenky(cookie);
+  if (listky == null) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(
           "Při komunikaci se serverem došlo k chybě, zkontrolujte připojení"),
     ));
-    print(err);
-  });
-  if (res.statusCode >= 400) {
-    // CHYBA
-    print("chyba");
-    return <Widget>[];
-  }
-  var jizdenkyTable =
-      RegExp(r"<tr>.+?(?=\/tr)", dotAll: true).allMatches(res.body);
-  if (jizdenkyTable.length == 1) {
-    //TODO: žádné jízdenky ?
-    content = [Center(child: Text("Nemáte žádné platné jizdenky"))];
-  }
-  for (var jizdenka in jizdenkyTable.skip(1)) {
-    var r = jizdenka.group(0).toString();
-
-    var najitJmeno = RegExp(r"(?=<strong>).+?(?=<\/strong)", dotAll: true)
-        .allMatches(r)
-        .toList();
-    var jmeno = najitJmeno[0].group(0).toString().replaceAll("<strong>", "");
-    var nosic = najitJmeno[1].group(0).toString().replaceAll("<strong>", "");
-
-// TODO: filtrovat neplatne jizdenky
-    var platnost = RegExp(r'(?=<div class="label).+?(?=<\/div)')
-        .firstMatch(r)!
-        .group(0)
-        .toString()
-        .replaceAll(RegExp(r'<div class="label .+">'), "");
-    if (platnost == "Neaktivn&iacute;") continue;
-
-    var platiOdDo =
-        RegExp(r'(?=<span).+?(?=<\/span)', dotAll: true).allMatches(r).toList();
-    var platiOd =
-        "${platiOdDo[0].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}, ${platiOdDo[1].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
-    var platiDo =
-        "${platiOdDo[2].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}, ${platiOdDo[3].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
-
-    nosic =
-        "$nosic - ${platiOdDo[4].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
-
-    var cena =
-        RegExp(r"[0-9,]+ Kč(?=<\/div)").firstMatch(r)!.group(0).toString();
-
-    content.add(Padding(
-      padding: EdgeInsets.only(top: 15.0, right: 5, left: 5),
-      child: Container(
-          width: double.infinity,
-          child: DefaultTextStyle(
-            child: Column(
-              children: [
-                Text("Jízdenka $jmeno"),
-                Row(
-                  children: [
-                    Text("Platí od: "),
-                    Text(
-                      platiOd,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
-                Row(
-                  children: [
-                    Text("Platí do: "),
-                    Text(
-                      platiDo,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
-                Row(
-                  children: [
-                    Text("Cena: "),
-                    Text(
-                      cena,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    )
-                  ],
-                )
-              ],
-            ),
-            style: TextStyle(fontSize: 18.0, color: Colors.black),
-          )),
-    ));
+  } else if (listky.length == 0) {
+    content = [Center(child: Text("Nemáte žádné jízdenky"))];
+  } else {
+    for (var listek in listky) {
+      content.add(Padding(
+        padding: EdgeInsets.only(top: 15.0, right: 5, left: 5),
+        child: Container(
+            width: double.infinity,
+            child: DefaultTextStyle(
+              child: Column(
+                children: [
+                  Text("Jízdenka ${listek.nazev}"),
+                  Row(
+                    children: [
+                      Text("Platí od: "),
+                      Text(
+                        listek.platiOd,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      )
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text("Platí do: "),
+                      Text(
+                        listek.platiDo,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      )
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text("Cena: "),
+                      Text(
+                        listek.cena,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      )
+                    ],
+                  )
+                ],
+              ),
+              style: TextStyle(fontSize: 18.0, color: Colors.black),
+            )),
+      ));
+    }
   }
   return content;
 }
