@@ -63,23 +63,17 @@ class _AppState extends State<MyApp> {
             requiresStorageNotLow: false,
             requiresDeviceIdle: false,
             requiredNetworkType: NetworkType.ANY), (String taskId) async {
-      // <-- Event handler
       // This is the fetch-event callback.
       print("[BackgroundFetch] Event received $taskId");
       // IMPORTANT:  You must signal completion of your task or the OS can punish your app
       // for taking too long in the background.
       BackgroundFetch.finish(taskId);
     }, (String taskId) async {
-      // <-- Task timeout handler.
       // This task has exceeded its allowed running-time.  You must stop what you're doing and immediately .finish(taskId)
       print("[BackgroundFetch] TASK TIMEOUT taskId: $taskId");
       BackgroundFetch.finish(taskId);
     });
     print('[BackgroundFetch] configure success: $status');
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
     if (!mounted) return;
 
     //BackgroundFetch.start();
