@@ -32,6 +32,7 @@ dependencies:
   http: ^0.13.3
   flutter_secure_storage: ^4.2.1
   connectivity_plus: ^1.1.0
+  background_fetch: ^1.0.1
 
 dev_dependencies:
   flutter_launcher_icons: ^0.9.2

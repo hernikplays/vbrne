@@ -91,7 +91,6 @@ class Communicator {
     var jizdenkyTable =
         RegExp(r"<tr>.+?(?=\/tr)", dotAll: true).allMatches(res.body);
     if (jizdenkyTable.length == 1) {
-      //TODO: žádné jízdenky ?
       return [];
     }
     for (var jizdenka in jizdenkyTable.skip(1)) {
@@ -119,7 +118,37 @@ class Communicator {
       var platiDo =
           "${platiOdDo[2].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}, ${platiOdDo[3].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
 
-      platiDo = DateTime.parse(formattedString);
+      // předělat "platiDo" na DateTime
+      var platiDoSplit = platiDo.split(r" ");
+
+      var platiDoDen = platiDoSplit[0].replaceAll(".", "");
+      platiDoDen =
+          ((int.parse(platiDoDen)) < 10) ? "0" + platiDoDen : platiDoDen;
+
+      var platiDoMesic = platiDoSplit[1].replaceAll(".", "");
+      platiDoMesic =
+          ((int.parse(platiDoMesic)) < 10) ? "0" + platiDoMesic : platiDoMesic;
+
+      var platiDoRok = platiDoSplit[2].replaceAll(",", "");
+
+      var platiDoDate = DateTime.parse(
+          "$platiDoRok-$platiDoMesic-$platiDoDen ${platiDoSplit[3]}:00");
+
+      // předělat "platiOd" na DateTime
+      var platiOdSplit = platiOd.split(r" ");
+
+      var platiOdDen = platiOdSplit[0].replaceAll(".", "");
+      platiOdDen =
+          ((int.parse(platiOdDen)) < 10) ? "0" + platiOdDen : platiOdDen;
+
+      var platiOdMesic = platiOdSplit[1].replaceAll(".", "");
+      platiOdMesic =
+          ((int.parse(platiOdMesic)) < 10) ? "0" + platiOdMesic : platiOdMesic;
+
+      var platiOdRok = platiOdSplit[2].replaceAll(",", "");
+
+      var platiOdDate = DateTime.parse(
+          "$platiOdRok-$platiOdMesic-$platiOdDen ${platiOdSplit[3]}:59");
 
       nosic =
           "$nosic - ${platiOdDo[4].group(0).toString().replaceAll(RegExp(r'<span.+>'), "")}";
@@ -129,8 +158,8 @@ class Communicator {
 
       jizdenky.add(Jizdenka(
           cena: cena,
-          platiOd: platiOd,
-          platiDo: platiDo,
+          platiOd: platiOdDate,
+          platiDo: platiDoDate,
           nosic: nosic,
           nazev: jmeno));
     }

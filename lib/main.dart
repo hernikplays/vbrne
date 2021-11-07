@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:background_fetch/background_fetch.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -23,11 +24,73 @@ import 'package:vbrne/communication.dart';
    limitations under the License.
 */
 
-void main() {
-  runApp(MyApp());
+void backgroundFetchHeadlessTask(HeadlessTask task) async {
+  String taskId = task.taskId;
+  bool isTimeout = task.timeout;
+  if (isTimeout) {
+    // This task has exceeded its allowed running-time.
+    // You must stop what you're doing and immediately .finish(taskId)
+    print("[BackgroundFetch] Headless task timed-out: $taskId");
+    BackgroundFetch.finish(taskId);
+    return;
+  }
+  print('[BackgroundFetch] Headless event received.');
+  // Do your work here...
+  BackgroundFetch.finish(taskId);
 }
 
-class MyApp extends StatelessWidget {
+void main() {
+  runApp(MyApp());
+  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
+}
+
+class MyApp extends StatefulWidget {
+  @override
+  _AppState createState() => _AppState();
+}
+
+class _AppState extends State<MyApp> {
+  Future<void> initPlatformState() async {
+    // Configure BackgroundFetch.
+    int status = await BackgroundFetch.configure(
+        BackgroundFetchConfig(
+            minimumFetchInterval: 15,
+            stopOnTerminate: false,
+            enableHeadless: true,
+            startOnBoot: true,
+            requiresBatteryNotLow: false,
+            requiresCharging: false,
+            requiresStorageNotLow: false,
+            requiresDeviceIdle: false,
+            requiredNetworkType: NetworkType.ANY), (String taskId) async {
+      // <-- Event handler
+      // This is the fetch-event callback.
+      print("[BackgroundFetch] Event received $taskId");
+      // IMPORTANT:  You must signal completion of your task or the OS can punish your app
+      // for taking too long in the background.
+      BackgroundFetch.finish(taskId);
+    }, (String taskId) async {
+      // <-- Task timeout handler.
+      // This task has exceeded its allowed running-time.  You must stop what you're doing and immediately .finish(taskId)
+      print("[BackgroundFetch] TASK TIMEOUT taskId: $taskId");
+      BackgroundFetch.finish(taskId);
+    });
+    print('[BackgroundFetch] configure success: $status');
+
+    // If the widget was removed from the tree while the asynchronous platform
+    // message was in flight, we want to discard the reply rather than calling
+    // setState to update our non-existent appearance.
+    if (!mounted) return;
+
+    //BackgroundFetch.start();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    initPlatformState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -426,7 +489,6 @@ class _MHDMainState extends State<MHDMain> {
 }
 
 Future<List<Widget>> vemListky(context, cookie) async {
-  // TODO: převést do COmmunicator.dart a zmenit regexp s lookbacky
   var content = <Widget>[];
   var listky = await Communicator.ziskejJizdenky(cookie);
   if (listky == null) {
@@ -451,7 +513,7 @@ Future<List<Widget>> vemListky(context, cookie) async {
                     children: [
                       Text("Platí od: "),
                       Text(
-                        listek.platiOd.toString(),
+                        "${listek.platiOd.day}. ${listek.platiOd.month}. ${listek.platiOd.year}, ${listek.platiOd.hour}:${listek.platiOd.minute}",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       )
                     ],
@@ -460,7 +522,7 @@ Future<List<Widget>> vemListky(context, cookie) async {
                     children: [
                       Text("Platí do: "),
                       Text(
-                        listek.platiDo.toString(),
+                        "${listek.platiDo.day}. ${listek.platiDo.month}. ${listek.platiDo.year}, ${listek.platiDo.hour}:${listek.platiDo.minute}",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       )
                     ],
@@ -943,6 +1005,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
   var itemyId; // id jednotlivych jizdenek
   var vybranyObjekt; // vybrana jizdenka
   var vybiratZony = false;
+  var seznamZon = <DropdownMenuItem<String>>[];
 
   @override
   void initState() {
@@ -1033,6 +1096,9 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
                       setState(() {
                         if (newValue!.contains(RegExp(r'\+\d zón'))) {
                           vybiratZony = true;
+                          if (seznamZon.length == 0) {
+                            // ziskame mozne zony
+                          }
                         }
                         vybranyObjekt = newValue;
                       });
