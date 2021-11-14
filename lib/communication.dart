@@ -5,12 +5,16 @@ import 'package:http/http.dart' as http;
 
 /// Komunikátor s webem
 class Communicator {
+  String? _cookie;
+  Communicator();
+  String? get cookie => _cookie;
+
   /// Ověří, zda cookie je platný a funguje
-  static Future<bool> validateCookie(String cookie) async {
+  Future<bool> validateCookie() async {
     var req =
         http.Request('GET', Uri.parse("https://www.brnoid.cz/cs/muj-ucet"));
     req.followRedirects = false;
-    req.headers['Cookie'] = cookie;
+    req.headers['Cookie'] = this.cookie!;
     var res = await req.send();
     if (res.statusCode == 302)
       return false;
@@ -18,12 +22,21 @@ class Communicator {
       return true;
   }
 
+  Future<Map<String, String>?> ziskejUdaje() async {
+    // zkontrolovat secure storage pokud je něco uložené
+    final storage = new FlutterSecureStorage();
+    var mail = await storage.read(key: "vbrne_user");
+    var pass = await storage.read(key: "vbrne_pass");
+    if (mail == null || pass == null) return null;
+    return {"mail": mail, "pass": pass};
+  }
+
   /// Získá nosiče z [Moje nosiče](https://www.brnoid.cz/cs/moje-nosice)
-  static Future<List<Nosic>> ziskatNosice(String cookie) async {
+  Future<List<Nosic>> ziskatNosice() async {
     var nosice = <Nosic>[];
 
     var res = await http.get(Uri.parse("https://www.brnoid.cz/cs/moje-nosice"),
-        headers: {HttpHeaders.cookieHeader: cookie}); // ziskame stranku
+        headers: {HttpHeaders.cookieHeader: this.cookie!}); // ziskame stranku
     var vsechnyNosice =
         RegExp(r'<tr>.+?(?=<\/tr>)', dotAll: true).allMatches(res.body).skip(1);
     for (var nosic in vsechnyNosice) {
@@ -52,14 +65,14 @@ class Communicator {
   }
 
   /// Přihlášení
-  static Future<String?> login(String user, String pass, bool remember) async {
-    if (user.length == 0 || pass.length == 0) return null;
+  Future<bool> login(String user, String pass, bool remember) async {
+    if (user.isEmpty || pass.isEmpty) return false;
     try {
       var res = await http.post(Uri.parse('https://www.brnoid.cz/cs/overeni'),
           body: {'email': user, 'password': pass, 'SubmitLogin': ""});
       if (res.headers['location'] != "https://www.brnoid.cz/cs/muj-ucet") {
         // v případě špatného hesla
-        return null;
+        return false;
       }
       var cookie = res.headers['set-cookie'];
       if (remember) {
@@ -68,18 +81,19 @@ class Communicator {
         await storage.write(key: 'vbrne_user', value: user);
         await storage.write(key: 'vbrne_pass', value: pass);
       }
-      return cookie;
+      this._cookie = cookie;
+      return true;
     } catch (e) {
-      return null;
+      return false;
     }
   }
 
-  static Future<List<Jizdenka>?> ziskejJizdenky(String cookie) async {
+  Future<List<Jizdenka>?> ziskejJizdenky() async {
     var c = false;
     var jizdenky = <Jizdenka>[];
     var res = await http.get(
         Uri.parse("https://www.brnoid.cz/cs/moje-jizdenky"),
-        headers: {HttpHeaders.cookieHeader: cookie}).catchError((err) {
+        headers: {HttpHeaders.cookieHeader: this.cookie!}).catchError((err) {
       print(err);
       c = true;
     });

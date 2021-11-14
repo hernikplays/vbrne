@@ -1,12 +1,13 @@
 import 'dart:io';
 
-import 'package:background_fetch/background_fetch.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vbrne/communication.dart';
+import 'package:workmanager/workmanager.dart';
 
 /*
   Copyright 2021, Matyáš Caras and contributors
@@ -24,24 +25,91 @@ import 'package:vbrne/communication.dart';
    limitations under the License.
 */
 
-void backgroundFetchHeadlessTask(HeadlessTask task) async {
-  String taskId = task.taskId;
-  bool isTimeout = task.timeout;
-  if (isTimeout) {
-    // This task has exceeded its allowed running-time.
-    // You must stop what you're doing and immediately .finish(taskId)
-    print("[BackgroundFetch] Headless task timed-out: $taskId");
-    BackgroundFetch.finish(taskId);
-    return;
+FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Communicator c = Communicator();
+
+/// Spustí se při kliknutí na oznámení
+void selectNotification(String? payload) async {
+  if (payload != null) {
+    debugPrint('notification payload: $payload');
   }
-  print('[BackgroundFetch] Headless event received.');
-  // Do your work here...
-  BackgroundFetch.finish(taskId);
+  /*await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (context) => SecondScreen(payload)),
+    );*/
 }
 
-void main() {
+/// Zkontroluje a ukáže oznámení o vypršení
+Future<bool> ukazVyprseniOznameni() async {
+  if (c.cookie == null) {
+    var value = await c.ziskejUdaje();
+    if (value != null) {
+      // jsou uložené údaje
+
+      var connectivityResult = await (Connectivity().checkConnectivity());
+      if (connectivityResult == ConnectivityResult.none) {
+        return Future.value(false);
+      }
+
+      var result = await c.login(value["mail"]!, value["pass"]!, true);
+      print("b");
+      print(c.cookie == null);
+      if (result == false) {
+        return Future.value(false);
+      } else {
+        return Future.value(false);
+      }
+    }
+  }
+
+  // kontrola jestli se má oznámení odeslat
+  var today = DateTime.utc(2021, 12, 1);
+  var jizdenky = await c.ziskejJizdenky();
+  if (jizdenky == null) return Future.error("Chyba při získávání jízdenek");
+  print(jizdenky[0].platiDo.isAfter(today));
+  if (jizdenky[0].platiDo.subtract(Duration(days: 2)).isAfter(today)) {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails('vyprseni', 'jizdenka_vyprseni',
+            channelDescription: 'Oznámení o vypršení předplatní jízdenky',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true);
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(0, 'Brzy vám vyprší jízdenka!',
+        'Nezapomeňte si koupit novou', platformChannelSpecifics,
+        payload: 'vyprsi');
+  }
+  return Future.value(true);
+}
+
+// Workmanager Callback
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) {
+    print(task);
+    var t = ukazVyprseniOznameni();
+    return t;
+  });
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Workmanager().initialize(
+    callbackDispatcher,
+  );
+  Workmanager().registerPeriodicTask("2", "checkExp",
+      frequency: Duration(minutes: 15),
+      backoffPolicyDelay: Duration(seconds: 15));
   runApp(MyApp());
-  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
+
+  // Notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('launcher_icon');
+  await flutterLocalNotificationsPlugin.initialize(
+      InitializationSettings(android: initializationSettingsAndroid),
+      onSelectNotification: selectNotification);
 }
 
 class MyApp extends StatefulWidget {
@@ -50,39 +118,9 @@ class MyApp extends StatefulWidget {
 }
 
 class _AppState extends State<MyApp> {
-  Future<void> initPlatformState() async {
-    // Configure BackgroundFetch.
-    int status = await BackgroundFetch.configure(
-        BackgroundFetchConfig(
-            minimumFetchInterval: 15,
-            stopOnTerminate: false,
-            enableHeadless: true,
-            startOnBoot: true,
-            requiresBatteryNotLow: false,
-            requiresCharging: false,
-            requiresStorageNotLow: false,
-            requiresDeviceIdle: false,
-            requiredNetworkType: NetworkType.ANY), (String taskId) async {
-      // This is the fetch-event callback.
-      print("[BackgroundFetch] Event received $taskId");
-      // IMPORTANT:  You must signal completion of your task or the OS can punish your app
-      // for taking too long in the background.
-      BackgroundFetch.finish(taskId);
-    }, (String taskId) async {
-      // This task has exceeded its allowed running-time.  You must stop what you're doing and immediately .finish(taskId)
-      print("[BackgroundFetch] TASK TIMEOUT taskId: $taskId");
-      BackgroundFetch.finish(taskId);
-    });
-    print('[BackgroundFetch] configure success: $status');
-    if (!mounted) return;
-
-    //BackgroundFetch.start();
-  }
-
   @override
   void initState() {
     super.initState();
-    initPlatformState();
   }
 
   @override
@@ -111,24 +149,14 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _passcontroller = TextEditingController();
   bool rememberChecked = false;
 
-  Future<Map<String, String>?> ziskejUdaje() async {
-    // zkontrolovat secure storage pokud je něco uložené
-    final storage = new FlutterSecureStorage();
-    var mail = await storage.read(key: "vbrne_user");
-    var pass = await storage.read(key: "vbrne_pass");
-    if (mail == null || pass == null) return null;
-    return {"mail": mail, "pass": pass};
-  }
-
   @override
   void initState() {
     super.initState();
-    ziskejUdaje().then((value) async {
+    c.ziskejUdaje().then((value) async {
       if (value != null) {
         // jsou uložené údaje
 
         var connectivityResult = await (Connectivity().checkConnectivity());
-        print(connectivityResult);
         if (connectivityResult == ConnectivityResult.none) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -139,21 +167,21 @@ class _MyHomePageState extends State<MyHomePage> {
           );
         }
 
-        var result = await Communicator.login(
-            value["mail"]!, value["pass"]!, rememberChecked);
-        if (result == null) {
+        var result =
+            await c.login(value["mail"]!, value["pass"]!, rememberChecked);
+        print("aa");
+        print(c.cookie == null);
+        if (result == false) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content:
-                  Text("Nepodařilo se přihlásit, zkontrolujte e-mail a heslo."),
+              content: Text(
+                  "Nepodařilo se přihlásit, zkontrolujte správnost údajů a stav BRNOiD."),
             ),
           );
         } else {
-          Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (ctx) => MainPage(title: "BRNOiD", cookie: result)));
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (ctx) => MainPage(title: "BRNOiD")));
         }
       }
     });
@@ -263,9 +291,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       );
                     }
 
-                    var result = await Communicator.login(_mailcontroller.text,
+                    var result = await c.login(_mailcontroller.text,
                         _passcontroller.text, rememberChecked);
-                    if (result == null) {
+                    if (result == false) {
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -277,8 +305,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (ctx) =>
-                                  MainPage(title: "BRNOiD", cookie: result)));
+                              builder: (ctx) => MainPage(title: "BRNOiD")));
                     }
                   },
                 ),
@@ -294,11 +321,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
 // rozcestník
 class MainPage extends StatefulWidget {
-  MainPage({Key? key, required this.title, required this.cookie})
-      : super(key: key);
+  MainPage({Key? key, required this.title}) : super(key: key);
 
   final String title;
-  final String cookie;
 
   @override
   _MainPageState createState() => _MainPageState();
@@ -348,11 +373,8 @@ class _MainPageState extends State<MainPage> {
             children: [
               InkWell(
                 onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (builder) =>
-                              MHDMain(cookie: widget.cookie)));
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (builder) => MHDMain()));
                 },
                 child: Container(
                   child: Center(
@@ -378,9 +400,8 @@ class _MainPageState extends State<MainPage> {
 }
 
 class MHDMain extends StatefulWidget {
-  MHDMain({Key? key, required this.cookie}) : super(key: key);
+  MHDMain({Key? key}) : super(key: key);
 
-  final String cookie;
   @override
   _MHDMainState createState() => _MHDMainState();
 }
@@ -391,7 +412,7 @@ class _MHDMainState extends State<MHDMain> {
   @override
   void initState() {
     super.initState();
-    Communicator.validateCookie(widget.cookie).then((result) {
+    c.validateCookie().then((result) {
       if (!result) {
         // nefunkční cookie
         Navigator.pushReplacement(
@@ -401,7 +422,7 @@ class _MHDMainState extends State<MHDMain> {
           ),
         );
       } else {
-        vemListky(context, widget.cookie).then((value) {
+        vemListky(context, c.cookie!).then((value) {
           setState(() {
             content.addAll(value);
           });
@@ -437,8 +458,7 @@ class _MHDMainState extends State<MHDMain> {
               title: Text("Domů"),
               onTap: () {
                 Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (ctx) =>
-                        MainPage(title: 'Domů', cookie: widget.cookie)));
+                    builder: (ctx) => MainPage(title: 'Domů')));
               },
             ),
             ListTile(
@@ -454,11 +474,8 @@ class _MHDMainState extends State<MHDMain> {
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
                 onTap: () {
-                  Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (ctx) =>
-                              NakupVyberNosic(cookie: widget.cookie)));
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (ctx) => NakupVyberNosic()));
                 },
                 leading: Icon(Icons.directions_bus)),
             ListTile(
@@ -469,9 +486,7 @@ class _MHDMainState extends State<MHDMain> {
               title: Text("Mé nosiče"),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => NosicePage()));
               },
               leading: Icon(Icons.credit_card),
             )
@@ -484,14 +499,14 @@ class _MHDMainState extends State<MHDMain> {
 
 Future<List<Widget>> vemListky(context, cookie) async {
   var content = <Widget>[];
-  var listky = await Communicator.ziskejJizdenky(cookie);
+  var listky = await c.ziskejJizdenky();
   if (listky == null) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(
           "Při komunikaci se serverem došlo k chybě, zkontrolujte připojení"),
     ));
-  } else if (listky.length == 0) {
+  } else if (listky.isEmpty) {
     content = [Center(child: Text("Nemáte žádné jízdenky"))];
   } else {
     for (var listek in listky) {
@@ -541,9 +556,7 @@ Future<List<Widget>> vemListky(context, cookie) async {
 }
 
 class NosicePage extends StatefulWidget {
-  NosicePage({Key? key, required this.cookie}) : super(key: key);
-
-  final String cookie;
+  NosicePage({Key? key}) : super(key: key);
 
   @override
   _NosicePage createState() => _NosicePage();
@@ -555,16 +568,16 @@ class _NosicePage extends State<NosicePage> {
   @override
   void initState() {
     super.initState();
-    Communicator.validateCookie(widget.cookie).then((valid) {
+    c.validateCookie().then((valid) {
       if (!valid)
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
                 builder: (ctx) => MyHomePage(title: 'Přihlásit se')));
 
-      Communicator.ziskatNosice(widget.cookie).then((nosice) {
+      c.ziskatNosice().then((nosice) {
         // TODO: Kontrolovat platnost
-        if (nosice.length == 0) {
+        if (nosice.isEmpty) {
           content.add(Center(
             child: Text("Nemáte žádné nosiče"),
           ));
@@ -628,8 +641,7 @@ class _NosicePage extends State<NosicePage> {
               title: Text("Domů"),
               onTap: () {
                 Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (ctx) =>
-                        MainPage(title: 'Domů', cookie: widget.cookie)));
+                    builder: (ctx) => MainPage(title: 'Domů')));
               },
             ),
             ListTile(
@@ -638,20 +650,15 @@ class _NosicePage extends State<NosicePage> {
               ),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => MHDMain()));
               },
               leading: Icon(Icons.list),
             ),
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
                 onTap: () {
-                  Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (ctx) =>
-                              NakupVyberNosic(cookie: widget.cookie)));
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (ctx) => NakupVyberNosic()));
                 },
                 leading: Icon(Icons.directions_bus)),
             ListTile(
@@ -674,9 +681,7 @@ class _NosicePage extends State<NosicePage> {
 }
 
 class NakupVyberNosic extends StatefulWidget {
-  NakupVyberNosic({Key? key, required this.cookie}) : super(key: key);
-
-  final String cookie;
+  NakupVyberNosic({Key? key}) : super(key: key);
 
   @override
   _NakupVyberNosicState createState() => _NakupVyberNosicState();
@@ -688,7 +693,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
   var vybranyObjekt; // vybrany nosic
 
   void ziskejNosice() {
-    Communicator.ziskatNosice(widget.cookie).then((nosice) {
+    c.ziskatNosice().then((nosice) {
       if (nosice.length < 1) {
         //TODO: uživatel nemá nosič
       } else {
@@ -701,7 +706,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
   @override
   void initState() {
     super.initState();
-    Communicator.validateCookie(widget.cookie).then((valid) {
+    c.validateCookie().then((valid) {
       if (!valid)
         Navigator.pushReplacement(
             context,
@@ -733,7 +738,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
                   ),
                 ),
                 DropdownButton<String>(
-                  items: (itemy.length == 0)
+                  items: (itemy.isEmpty)
                       ? null
                       : itemy.map<DropdownMenuItem<String>>((Nosic value) {
                           return DropdownMenuItem<String>(
@@ -754,8 +759,8 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
                     onPressed: () {
                       if (vybranyObjekt == null) return;
                       Navigator.of(context).push(MaterialPageRoute(
-                          builder: (ctx) => NakupVybratKategorii(
-                              cookie: widget.cookie, nosicId: vybranyObjekt)));
+                          builder: (ctx) =>
+                              NakupVybratKategorii(nosicId: vybranyObjekt)));
                     },
                     child: Text("Pokračovat")),
               ],
@@ -771,8 +776,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
               title: Text("Domů"),
               onTap: () {
                 Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (ctx) =>
-                        MainPage(title: 'Domů', cookie: widget.cookie)));
+                    builder: (ctx) => MainPage(title: 'Domů')));
               },
             ),
             ListTile(
@@ -781,9 +785,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
               ),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => MHDMain()));
               },
               leading: Icon(Icons.list),
             ),
@@ -802,9 +804,7 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
               title: Text("Mé nosiče"),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => NosicePage()));
               },
               leading: Icon(Icons.credit_card),
             )
@@ -817,10 +817,8 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
 
 class NakupVybratKategorii extends StatefulWidget {
   // zde vybereme kategorii
-  NakupVybratKategorii({Key? key, required this.cookie, required this.nosicId})
-      : super(key: key);
+  NakupVybratKategorii({Key? key, required this.nosicId}) : super(key: key);
 
-  final String cookie;
   final String nosicId;
 
   @override
@@ -836,7 +834,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
   @override
   void initState() {
     super.initState();
-    Communicator.validateCookie(widget.cookie).then((valid) {
+    c.validateCookie().then((valid) {
       if (!valid)
         Navigator.pushReplacement(
             context,
@@ -852,7 +850,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
     http.get(
         Uri.parse(
             "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${widget.nosicId.replaceAll("token_", "")}&id_category=17#select-category"),
-        headers: {HttpHeaders.cookieHeader: widget.cookie}).then((res) {
+        headers: {HttpHeaders.cookieHeader: c.cookie!}).then((res) {
       var mozneSlevy = RegExp(r'(?<=<select).+?(?=<\/select)')
           .firstMatch(res.body)!
           .group(0)!
@@ -887,7 +885,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
                   ),
                 ),
                 DropdownButton<String>(
-                  items: (itemy.length == 0)
+                  items: (itemy.isEmpty)
                       ? null
                       : itemy
                           .map<DropdownMenuItem<String>>((RegExpMatch value) {
@@ -912,7 +910,6 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
                       if (vybranyObjekt == null) return;
                       Navigator.of(context).pushReplacement(MaterialPageRoute(
                           builder: (ctx) => NakupVybratJizdenku(
-                              cookie: widget.cookie,
                               nosicId: widget.nosicId,
                               kategorie: vybranyObjekt)));
                     },
@@ -930,8 +927,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
               title: Text("Domů"),
               onTap: () {
                 Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (ctx) =>
-                        MainPage(title: 'Domů', cookie: widget.cookie)));
+                    builder: (ctx) => MainPage(title: 'Domů')));
               },
             ),
             ListTile(
@@ -940,9 +936,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
               ),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => MHDMain()));
               },
               leading: Icon(Icons.list),
             ),
@@ -961,9 +955,7 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
               title: Text("Mé nosiče"),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => NosicePage()));
               },
               leading: Icon(Icons.credit_card),
             )
@@ -977,13 +969,9 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
 class NakupVybratJizdenku extends StatefulWidget {
   // zde vybereme kategorii
   NakupVybratJizdenku(
-      {Key? key,
-      required this.cookie,
-      required this.nosicId,
-      required this.kategorie})
+      {Key? key, required this.nosicId, required this.kategorie})
       : super(key: key);
 
-  final String cookie;
   final String nosicId;
   final String kategorie;
 
@@ -1004,7 +992,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
   @override
   void initState() {
     super.initState();
-    Communicator.validateCookie(widget.cookie).then((valid) {
+    c.validateCookie().then((valid) {
       if (!valid)
         Navigator.pushReplacement(
             context,
@@ -1020,7 +1008,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
     http.get(
         Uri.parse(
             "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${widget.nosicId.replaceAll("token_", "")}&id_category=17&id_subcategory=${widget.kategorie}#select-category"),
-        headers: {HttpHeaders.cookieHeader: widget.cookie}).then((res) {
+        headers: {HttpHeaders.cookieHeader: c.cookie!}).then((res) {
       var mozneJizdenky = RegExp(r'(?<=id="products").+?(?=<\/select)')
           .firstMatch(res.body)!
           .group(0)!
@@ -1082,7 +1070,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
                 ),
                 Container(
                   child: DropdownButton<String>(
-                    items: (itemy.length == 0) ? null : itemy,
+                    items: (itemy.isEmpty) ? null : itemy,
                     value: vybranyObjekt,
                     icon: Icon(Icons.confirmation_number_rounded),
                     isExpanded: true,
@@ -1090,7 +1078,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
                       setState(() {
                         if (newValue!.contains(RegExp(r'\+\d zón'))) {
                           vybiratZony = true;
-                          if (seznamZon.length == 0) {
+                          if (seznamZon.isEmpty) {
                             // ziskame mozne zony
                           }
                         }
@@ -1134,8 +1122,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
               title: Text("Domů"),
               onTap: () {
                 Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (ctx) =>
-                        MainPage(title: 'Domů', cookie: widget.cookie)));
+                    builder: (ctx) => MainPage(title: 'Domů')));
               },
             ),
             ListTile(
@@ -1144,9 +1131,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
               ),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => MHDMain(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => MHDMain()));
               },
               leading: Icon(Icons.list),
             ),
@@ -1165,9 +1150,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
               title: Text("Mé nosiče"),
               onTap: () {
                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => NosicePage(cookie: widget.cookie)));
+                    context, MaterialPageRoute(builder: (ctx) => NosicePage()));
               },
               leading: Icon(Icons.credit_card),
             )
