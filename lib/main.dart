@@ -58,18 +58,16 @@ Future<bool> ukazVyprseniOznameni() async {
       print(c.cookie == null);
       if (result == false) {
         return Future.value(false);
-      } else {
-        return Future.value(false);
       }
     }
   }
 
   // kontrola jestli se má oznámení odeslat
-  var today = DateTime.utc(2021, 12, 1);
+  var today = DateTime.now();
   var jizdenky = await c.ziskejJizdenky();
   if (jizdenky == null) return Future.error("Chyba při získávání jízdenek");
-  print(jizdenky[0].platiDo.isAfter(today));
-  if (jizdenky[0].platiDo.subtract(Duration(days: 2)).isAfter(today)) {
+
+  if (jizdenky[0].platiDo.subtract(Duration(days: 7)).isBefore(today)) {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails('vyprseni', 'jizdenka_vyprseni',
             channelDescription: 'Oznámení o vypršení předplatní jízdenky',
@@ -78,10 +76,14 @@ Future<bool> ukazVyprseniOznameni() async {
             playSound: true);
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
-    await flutterLocalNotificationsPlugin.show(0, 'Brzy vám vyprší jízdenka!',
-        'Nezapomeňte si koupit novou', platformChannelSpecifics,
+    await flutterLocalNotificationsPlugin.show(
+        0,
+        'Brzy vám vyprší předplatní jízdenka!',
+        'Nezapomeňte si koupit novou',
+        platformChannelSpecifics,
         payload: 'vyprsi');
   }
+  Workmanager().cancelByUniqueName("2");
   return Future.value(true);
 }
 
@@ -169,8 +171,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
         var result =
             await c.login(value["mail"]!, value["pass"]!, rememberChecked);
-        print("aa");
-        print(c.cookie == null);
         if (result == false) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
