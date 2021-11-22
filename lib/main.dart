@@ -43,6 +43,8 @@ void selectNotification(String? payload) async {
 
 /// Zkontroluje a ukáže oznámení o vypršení
 Future<bool> ukazVyprseniOznameni() async {
+  var connectivityResult = await (Connectivity().checkConnectivity());
+  if (connectivityResult == ConnectivityResult.none) return Future.value(false)
   if (c.cookie == null) {
     var value = await c.ziskejUdaje();
     if (value != null) {
