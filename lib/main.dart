@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -44,7 +45,7 @@ void selectNotification(String? payload) async {
 /// Zkontroluje a ukáže oznámení o vypršení
 Future<bool> ukazVyprseniOznameni() async {
   var connectivityResult = await (Connectivity().checkConnectivity());
-  if (connectivityResult == ConnectivityResult.none) return Future.value(false)
+  if (connectivityResult == ConnectivityResult.none) return Future.value(false);
   if (c.cookie == null) {
     var value = await c.ziskejUdaje();
     if (value != null) {
@@ -59,6 +60,8 @@ Future<bool> ukazVyprseniOznameni() async {
       print("b");
       print(c.cookie == null);
       if (result == false) {
+        return Future.value(false);
+      } else {
         return Future.value(false);
       }
     }
@@ -173,6 +176,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
         var result =
             await c.login(value["mail"]!, value["pass"]!, rememberChecked);
+        print("aa");
+        print(c.cookie == null);
         if (result == false) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -739,23 +744,26 @@ class _NakupVyberNosicState extends State<NakupVyberNosic> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                DropdownButton<String>(
-                  items: (itemy.isEmpty)
-                      ? null
-                      : itemy.map<DropdownMenuItem<String>>((Nosic value) {
-                          return DropdownMenuItem<String>(
-                              child: Text(value.nosicCislo,
-                                  style: TextStyle(fontSize: 20)),
-                              value: value.id);
-                        }).toList(),
-                  value: vybranyObjekt,
-                  icon: Icon(Icons.credit_card),
-                  isExpanded: true,
-                  onChanged: (newValue) {
-                    setState(() {
-                      vybranyObjekt = newValue!;
-                    });
-                  },
+                Container(
+                  width: MediaQuery.of(context).size.width / 1.3,
+                  child: DropdownButton<String>(
+                    items: (itemy.isEmpty)
+                        ? null
+                        : itemy.map<DropdownMenuItem<String>>((Nosic value) {
+                            return DropdownMenuItem<String>(
+                                child: Text(value.nosicCislo,
+                                    style: TextStyle(fontSize: 20)),
+                                value: value.id);
+                          }).toList(),
+                    value: vybranyObjekt,
+                    icon: Icon(Icons.credit_card),
+                    isExpanded: true,
+                    onChanged: (newValue) {
+                      setState(() {
+                        vybranyObjekt = newValue!;
+                      });
+                    },
+                  ),
                 ),
                 TextButton(
                     onPressed: () {
@@ -886,26 +894,29 @@ class _VybratKategoriiState extends State<NakupVybratKategorii> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                DropdownButton<String>(
-                  items: (itemy.isEmpty)
-                      ? null
-                      : itemy
-                          .map<DropdownMenuItem<String>>((RegExpMatch value) {
-                          return DropdownMenuItem<String>(
-                              child: Text(value.group(0).toString(),
-                                  style: TextStyle(fontSize: 20)),
-                              value: itemyId[itemy.indexOf(value)]
-                                  .group(0)
-                                  .toString());
-                        }).toList(),
-                  value: vybranyObjekt,
-                  icon: Icon(Icons.person),
-                  isExpanded: true,
-                  onChanged: (newValue) {
-                    setState(() {
-                      vybranyObjekt = newValue!;
-                    });
-                  },
+                Container(
+                  width: MediaQuery.of(context).size.width / 1.3,
+                  child: DropdownButton<String>(
+                    items: (itemy.isEmpty)
+                        ? null
+                        : itemy
+                            .map<DropdownMenuItem<String>>((RegExpMatch value) {
+                            return DropdownMenuItem<String>(
+                                child: Text(value.group(0).toString(),
+                                    style: TextStyle(fontSize: 20)),
+                                value: itemyId[itemy.indexOf(value)]
+                                    .group(0)
+                                    .toString());
+                          }).toList(),
+                    value: vybranyObjekt,
+                    icon: Icon(Icons.person),
+                    isExpanded: true,
+                    onChanged: (newValue) {
+                      setState(() {
+                        vybranyObjekt = newValue!;
+                      });
+                    },
+                  ),
                 ),
                 TextButton(
                     onPressed: () {
@@ -989,7 +1000,8 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
   var itemyId; // id jednotlivych jizdenek
   var vybranyObjekt; // vybrana jizdenka
   var vybiratZony = false;
-  var seznamZon = <DropdownMenuItem<String>>[];
+  var vyberZon = <Row>[];
+  var zonyNavic = <String?>[];
 
   @override
   void initState() {
@@ -1051,6 +1063,63 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
     });
   }
 
+  void pridejZonu(id, sourceZona, List<String> except) {
+    var data = Map<String, dynamic>();
+    data["ajax"] = "1";
+    data["action"] = "get_neighbouring_zones";
+    data["id_product"] = id;
+    data["source"] = sourceZona;
+    data["except"] = except.join(";");
+    http.post(Uri.parse("https://www.brnoid.cz/cs/koupit-jizdenku-ids"),
+        body: data, headers: {HttpHeaders.cookieHeader: c.cookie!}).then((res) {
+      print(res.body);
+      var r = res.body.replaceAll(RegExp(r'("|\[|\])'), "").split(",");
+      print(r[0]);
+    });
+  }
+
+  Future<void> ziskejZony(id, pocetZon) async {
+    vyberZon = [];
+    var res = await http.get(
+        Uri.parse(
+            "https://www.brnoid.cz/cs/koupit-jizdenku-ids?controller=buy-ticket-ids&customer_token=${widget.nosicId.replaceAll("token_", "")}&id_category=17&id_subcategory=${widget.kategorie}&id_product=$id#select-validity"),
+        headers: {HttpHeaders.cookieHeader: c.cookie!});
+    var inputMatcher = RegExp(
+        r'(?<=name="zones\[3\]">).+(?=<\/select>)'); // tímto získáme možnosti pro 3. zónu, od které se pak odpíchneme k další
+    var optionMatcher =
+        RegExp(r'(?<=value=")\d+'); // tímto získáme každou zónu zvlášť
+    var itemy = <DropdownMenuItem<String>>[];
+
+    var options = inputMatcher.firstMatch(res.body)!.group(0).toString();
+
+    var zony = optionMatcher.allMatches(options).toList();
+    for (var zona in zony) {
+      var z = zona.group(0).toString();
+      print(z);
+      itemy.add(DropdownMenuItem<String>(child: Text(z), value: z));
+    }
+
+    vyberZon.add(Row(children: [
+      Text(
+        "3. zóna: ",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      DropdownButton(
+          items: itemy,
+          onChanged: (newValue) {
+            var vybrana = newValue!.toString();
+            if (zonyNavic.isEmpty) {
+              zonyNavic.add(vybrana);
+            } else {
+              zonyNavic[0] = vybrana;
+            }
+            pridejZonu(id, vybrana, [vybrana]);
+            setState(() {});
+          },
+          value: (zonyNavic.isEmpty) ? null : zonyNavic[0])
+    ], mainAxisAlignment: MainAxisAlignment.center));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1076,14 +1145,27 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
                     value: vybranyObjekt,
                     icon: Icon(Icons.confirmation_number_rounded),
                     isExpanded: true,
-                    onChanged: (newValue) {
+                    onChanged: (newValue) async {
+                      var newName = itemy.firstWhere((element) {
+                        if (element.value == newValue) {
+                          return true;
+                        } else
+                          return false;
+                      });
+                      await ziskejZony(
+                          newValue,
+                          RegExp(r'\+\d zón')
+                              .firstMatch(newName.child.toString())!
+                              .group(0)
+                              .toString()
+                              .replaceAll(" zón", ""));
                       setState(() {
-                        if (newValue!.contains(RegExp(r'\+\d zón'))) {
+                        if (newName.child
+                            .toString()
+                            .contains(RegExp(r'\+\d zón'))) {
                           vybiratZony = true;
-                          if (seznamZon.isEmpty) {
-                            // ziskame mozne zony
-                          }
-                        }
+                        } else
+                          vybiratZony = false;
                         vybranyObjekt = newValue;
                       });
                     },
@@ -1101,6 +1183,7 @@ class _VybratJizdenkuState extends State<NakupVybratJizdenku> {
                           textAlign: TextAlign.center,
                         ),
                       ),
+                      ...vyberZon
                     ],
                   ),
                   visible: vybiratZony,

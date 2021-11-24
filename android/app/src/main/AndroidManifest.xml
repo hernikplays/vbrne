@@ -2,7 +2,7 @@
 xmlns:tools="http://schemas.android.com/tools"
     package="cz.hernikplays.vbrne">
    <application
-        android:label="vbrne"
+        android:label="V Brně"
         android:icon="@mipmap/launcher_icon"
         android:allowBackup="false"
         android:fullBackupContent="false"

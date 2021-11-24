@@ -8,6 +8,8 @@
   
   Aplikace je aktuálně ve vývoji.
 
+[![CodeFactor](https://www.codefactor.io/repository/github/hernikplays/vbrne/badge/main)](https://www.codefactor.io/repository/github/hernikplays/vbrne/overview/main)
+
 ## Implementované funkce
 - Nejvíc divný kód, který z nějakého důvodu funguje
 ### MHD
