@@ -122,7 +122,7 @@ class Communicator {
           .group(0)
           .toString()
           .replaceAll(RegExp(r'<div class="label .+">'), "");
-      if (platnost == "Neaktivn&iacute;") continue;
+      //if (platnost == "Neaktivn&iacute;") continue;
 
       var platiOdDo = RegExp(r'(?=<span).+?(?=<\/span)', dotAll: true)
           .allMatches(r)
@@ -175,7 +175,8 @@ class Communicator {
           platiOd: platiOdDate,
           platiDo: platiDoDate,
           nosic: nosic,
-          nazev: jmeno));
+          nazev: jmeno,
+          platiTed:(platnost == "Neaktivn&iacute;")?false:true));
     }
     return jizdenky;
   }
@@ -218,10 +219,14 @@ class Jizdenka {
   /// Identifikator nosiče, na kterém je jízdenka
   final String nosic;
 
+  /// Udává, jestli jízdenka je v moment vytvoření instance platná
+  final bool platiTed;
+
   Jizdenka(
       {required this.platiOd,
       required this.platiDo,
       required this.cena,
       required this.nazev,
-      required this.nosic});
+      required this.nosic,
+      required this.platiTed});
 }
