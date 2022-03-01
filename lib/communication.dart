@@ -176,7 +176,7 @@ class Communicator {
           platiDo: platiDoDate,
           nosic: nosic,
           nazev: jmeno,
-          platiTed:(platnost == "Neaktivn&iacute;")?false:true));
+          platiTed: (platnost == "Neaktivn&iacute;") ? false : true));
     }
     return jizdenky;
   }
