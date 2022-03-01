@@ -69,64 +69,13 @@ class _NosicePage extends State<NosicePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Mé nosiče"),
-      ),
-      body: SingleChildScrollView(
-        child: Container(
-          width: double.infinity,
-          child: DefaultTextStyle(
-            child: Column(
-                children: content,
-                crossAxisAlignment: CrossAxisAlignment.center),
-            style: TextStyle(fontSize: 18.0, color: Colors.black),
-          ),
-        ),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            DrawerHeader(child: Text("BRNOiD - MHD")),
-            ListTile(
-              title: Text("Domů"),
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (ctx) => MainPage(c: widget.c)));
-              },
-            ),
-            ListTile(
-              title: Text(
-                "Jízdenky",
-              ),
-              onTap: () {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (ctx) => MHDMain(c: widget.c)));
-              },
-              leading: Icon(Icons.list),
-            ),
-            ListTile(
-                title: Text("Zakoupit předplatní jízdenku"),
-                onTap: () {
-                  Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (ctx) => NakupVyberNosic(c: widget.c)));
-                },
-                leading: Icon(Icons.directions_bus)),
-            ListTile(
-                title: Text("Kontroly revizorem"),
-                onTap: () {/* TODO */},
-                leading: Icon(Icons.assignment_ind)),
-            ListTile(
-              title: Text("Mé nosiče"),
-              selected: true,
-              onTap: () {
-                Navigator.pop(context);
-              },
-              leading: Icon(Icons.credit_card),
-            )
-          ],
+    return SingleChildScrollView(
+      child: Container(
+        width: double.infinity,
+        child: DefaultTextStyle(
+          child: Column(
+              children: content, crossAxisAlignment: CrossAxisAlignment.center),
+          style: TextStyle(fontSize: 18.0, color: Colors.black),
         ),
       ),
     );

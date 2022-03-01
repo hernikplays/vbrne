@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+enum Platnost { PRED, PLATI, NEPLATI }
+
 /// Komunikátor s webem
 class Communicator {
   String? _cookie;
@@ -122,7 +124,23 @@ class Communicator {
           .group(0)
           .toString()
           .replaceAll(RegExp(r'<div class="label .+">'), "");
-      //if (platnost == "Neaktivn&iacute;") continue;
+      var enumPlatnost;
+      print(platnost);
+      switch (platnost) {
+        case "Před platnost&iacute;":
+          enumPlatnost = Platnost.PRED;
+          break;
+        case "Platn&aacute;":
+          enumPlatnost = Platnost.PLATI;
+          break;
+        case "Platnost j&iacute;zdenky vypr&scaron;ela":
+          enumPlatnost = Platnost.NEPLATI;
+          break;
+        default:
+          enumPlatnost = Platnost.NEPLATI;
+          print("ANI JEDNO");
+          break;
+      }
 
       var platiOdDo = RegExp(r'(?=<span).+?(?=<\/span)', dotAll: true)
           .allMatches(r)
@@ -176,7 +194,7 @@ class Communicator {
           platiDo: platiDoDate,
           nosic: nosic,
           nazev: jmeno,
-          platiTed: (platnost == "Neaktivn&iacute;") ? false : true));
+          platiTed: enumPlatnost));
     }
     return jizdenky;
   }
@@ -205,10 +223,10 @@ class Nosic {
 
 class Jizdenka {
   /// Začátek platnosti
-  final DateTime platiOd; // TODO: Převést na DateTime
+  final DateTime platiOd;
 
   /// Konec platnosti
-  final DateTime platiDo; // TODO: Převést na DateTime
+  final DateTime platiDo;
 
   /// Cena za jízdenku
   final String cena;
@@ -220,7 +238,7 @@ class Jizdenka {
   final String nosic;
 
   /// Udává, jestli jízdenka je v moment vytvoření instance platná
-  final bool platiTed;
+  final Platnost platiTed;
 
   Jizdenka(
       {required this.platiOd,

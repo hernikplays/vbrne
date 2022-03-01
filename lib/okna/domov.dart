@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vbrne/communication.dart';
 import 'package:vbrne/okna/prihlaseni.dart';
 
+import 'mhd/mhd_base.dart';
 import 'mhd/mhd_home.dart';
 
 class MainPage extends StatefulWidget {
@@ -62,7 +63,7 @@ class _MainPageState extends State<MainPage> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (builder) => MHDMain(c: widget.c)));
+                          builder: (builder) => MHDBase(c: widget.c)));
                 },
                 child: Container(
                   child: Center(

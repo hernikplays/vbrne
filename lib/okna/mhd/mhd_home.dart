@@ -42,68 +42,16 @@ class _MHDMainState extends State<MHDMain> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("MHD"),
-      ),
-      body: SingleChildScrollView(
-        child: Container(
-          width: double.infinity,
-          child: DefaultTextStyle(
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, color: Colors.black),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: content,
-            ),
+    return SingleChildScrollView(
+      child: Container(
+        width: double.infinity,
+        child: DefaultTextStyle(
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18, color: Colors.black),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: content,
           ),
-        ),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            DrawerHeader(child: Text("BRNOiD - MHD")),
-            ListTile(
-              title: Text("Domů"),
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (ctx) => MainPage(c: widget.c)));
-              },
-            ),
-            ListTile(
-              selected: true,
-              title: Text(
-                "Jízdenky",
-              ),
-              onTap: () {
-                Navigator.pop(context);
-              },
-              leading: Icon(Icons.list),
-            ),
-            ListTile(
-                title: Text("Zakoupit předplatní jízdenku"),
-                onTap: () {
-                  Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (ctx) => NakupVyberNosic(c: widget.c)));
-                },
-                leading: Icon(Icons.directions_bus)),
-            ListTile(
-                title: Text("Kontroly revizorem"),
-                onTap: () {/* TODO */},
-                leading: Icon(Icons.assignment_ind)),
-            ListTile(
-              title: Text("Mé nosiče"),
-              onTap: () {
-                Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (ctx) => NosicePage(c: widget.c)));
-              },
-              leading: Icon(Icons.credit_card),
-            )
-          ],
         ),
       ),
     );
@@ -157,9 +105,13 @@ class _MHDMainState extends State<MHDMain> {
                         )
                       ],
                     ),
-                    (listek.platiTed)
+                    (listek.platiTed == Platnost.PLATI)
                         ? Text("Platí", style: TextStyle(color: Colors.green))
-                        : Text("Neplatí", style: TextStyle(color: Colors.red))
+                        : (listek.platiTed == Platnost.PRED)
+                            ? Text("Bude platit",
+                                style: TextStyle(color: Colors.orange))
+                            : Text("Neplatí",
+                                style: TextStyle(color: Colors.red))
                   ],
                 ),
                 style: TextStyle(fontSize: 18.0, color: Colors.black),
