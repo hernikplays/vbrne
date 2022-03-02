@@ -129,9 +129,8 @@ class _AppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'V Brně',
-      theme: ThemeData(
-        primarySwatch: Colors.red,
-      ),
+      theme: ThemeData(primarySwatch: Colors.red, brightness: Brightness.light),
+      darkTheme: ThemeData.dark(),
       home: Prihlaseni(c: c),
     );
   }

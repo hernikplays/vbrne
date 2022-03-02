@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vbrne/communication.dart';
 import 'package:vbrne/okna/mhd/mhd_home.dart';
-import 'package:vbrne/okna/prihlaseni.dart';
 
 import '../domov.dart';
 import 'mhd_nosice.dart';
@@ -55,20 +54,21 @@ class _MHDBaseState extends State<MHDBase> {
                 Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (ctx) => MainPage(c: widget.c)));
               },
+              selectedColor: Colors.redAccent,
             ),
             ListTile(
-              selected: selection == Cast.JIZDENKY,
-              title: Text(
-                "Jízdenky",
-              ),
-              onTap: () {
-                setState(() {
-                  selection = Cast.JIZDENKY;
-                  Navigator.pop(context);
-                });
-              },
-              leading: Icon(Icons.list),
-            ),
+                selected: selection == Cast.JIZDENKY,
+                title: Text(
+                  "Jízdenky",
+                ),
+                onTap: () {
+                  setState(() {
+                    selection = Cast.JIZDENKY;
+                    Navigator.pop(context);
+                  });
+                },
+                leading: Icon(Icons.list),
+                selectedColor: Colors.redAccent),
             ListTile(
                 title: Text("Zakoupit předplatní jízdenku"),
                 onTap: () {
@@ -81,18 +81,19 @@ class _MHDBaseState extends State<MHDBase> {
             ListTile(
                 title: Text("Kontroly revizorem"),
                 onTap: () {/* TODO */},
-                leading: Icon(Icons.assignment_ind)),
+                leading: Icon(Icons.assignment_ind),
+                selectedColor: Colors.redAccent),
             ListTile(
-              title: Text("Mé nosiče"),
-              onTap: () {
-                setState(() {
-                  selection = Cast.NOSICE;
-                  Navigator.pop(context);
-                });
-              },
-              selected: selection == Cast.NOSICE,
-              leading: Icon(Icons.credit_card),
-            )
+                title: Text("Mé nosiče"),
+                onTap: () {
+                  setState(() {
+                    selection = Cast.NOSICE;
+                    Navigator.pop(context);
+                  });
+                },
+                selected: selection == Cast.NOSICE,
+                leading: Icon(Icons.credit_card),
+                selectedColor: Colors.redAccent)
           ],
         ),
       ),

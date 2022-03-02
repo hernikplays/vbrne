@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:vbrne/communication.dart';
 import 'package:vbrne/okna/prihlaseni.dart';
 
-import '../domov.dart';
-import 'mhd_home.dart';
-import 'nakup/nakup_nosic.dart';
-
 class NosicePage extends StatefulWidget {
   NosicePage({Key? key, required this.c}) : super(key: key);
 
@@ -16,7 +12,13 @@ class NosicePage extends StatefulWidget {
 }
 
 class _NosicePage extends State<NosicePage> {
-  final content = <Widget>[];
+  final content = <Widget>[
+    Center(
+      child: CircularProgressIndicator(
+        color: Colors.redAccent,
+      ),
+    )
+  ];
 
   @override
   void initState() {
@@ -27,6 +29,7 @@ class _NosicePage extends State<NosicePage> {
             MaterialPageRoute(builder: (ctx) => Prihlaseni(c: widget.c)));
 
       widget.c.ziskatNosice().then((nosice) {
+        content.clear();
         // TODO: Kontrolovat platnost
         if (nosice.isEmpty) {
           content.add(Center(
@@ -75,7 +78,8 @@ class _NosicePage extends State<NosicePage> {
         child: DefaultTextStyle(
           child: Column(
               children: content, crossAxisAlignment: CrossAxisAlignment.center),
-          style: TextStyle(fontSize: 18.0, color: Colors.black),
+          style: TextStyle(
+              fontSize: 18.0, color: Theme.of(context).colorScheme.onPrimary),
         ),
       ),
     );

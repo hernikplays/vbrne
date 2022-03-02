@@ -125,7 +125,6 @@ class Communicator {
           .toString()
           .replaceAll(RegExp(r'<div class="label .+">'), "");
       var enumPlatnost;
-      print(platnost);
       switch (platnost) {
         case "Před platnost&iacute;":
           enumPlatnost = Platnost.PRED;

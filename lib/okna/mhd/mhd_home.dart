@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:vbrne/communication.dart';
 import 'package:vbrne/okna/prihlaseni.dart';
 
-import '../domov.dart';
-import 'mhd_nosice.dart';
-import 'nakup/nakup_nosic.dart';
-
 class MHDMain extends StatefulWidget {
   MHDMain({Key? key, required this.c}) : super(key: key);
 
@@ -16,12 +12,19 @@ class MHDMain extends StatefulWidget {
 }
 
 class _MHDMainState extends State<MHDMain> {
-  var content = <Widget>[];
+  final content = <Widget>[
+    Center(
+      child: CircularProgressIndicator(
+        color: Colors.redAccent,
+      ),
+    )
+  ];
   var title = "Jízdenky";
   @override
   void initState() {
     super.initState();
     widget.c.validateCookie().then((result) {
+      content.clear();
       if (!result) {
         // nefunkční cookie
         Navigator.pushReplacement(
@@ -47,7 +50,8 @@ class _MHDMainState extends State<MHDMain> {
         width: double.infinity,
         child: DefaultTextStyle(
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, color: Colors.black),
+          style: TextStyle(
+              fontSize: 18, color: Theme.of(context).colorScheme.onPrimary),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: content,
@@ -106,17 +110,30 @@ class _MHDMainState extends State<MHDMain> {
                       ],
                     ),
                     (listek.platiTed == Platnost.PLATI)
-                        ? Text("Platí", style: TextStyle(color: Colors.green))
+                        ? Text("Platí",
+                            style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold))
                         : (listek.platiTed == Platnost.PRED)
                             ? Text("Bude platit",
-                                style: TextStyle(color: Colors.orange))
+                                style: TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold))
                             : Text("Neplatí",
-                                style: TextStyle(color: Colors.red))
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold))
                   ],
                 ),
-                style: TextStyle(fontSize: 18.0, color: Colors.black),
+                style: TextStyle(
+                    fontSize: 18.0,
+                    color: Theme.of(context).colorScheme.onPrimary),
               )),
         ));
+        content.add(Divider(
+            thickness: 2,
+            height: 40,
+            color: Theme.of(context).colorScheme.onBackground));
       }
     }
     return content;
